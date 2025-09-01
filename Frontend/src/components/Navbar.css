@@ -1,0 +1,14 @@
+.topbar {
+  background: #0f1724;
+  color: #fff;
+  padding: 12px 0;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; gap: 12px; align-items: center; cursor: pointer; }
+.logo-emoji { font-size: 28px; }
+.brand-title { font-weight: 700; font-size: 18px; color: #fff; }
+.brand-sub { font-size: 12px; color: #9aa6b2; margin-top: -2px; }
+.navlinks a, .navlinks button { color: #dbe7f0; margin-left: 16px; text-decoration: none; }
+.btn-outline { background: #fff; color: #0f1724; padding: 6px 10px; border-radius: 6px; margin-left: 12px; font-weight: 600; }
+.btn-ghost { background: transparent; color: #dbe7f0; border: 1px solid transparent; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.navlinks a:hover, .btn-ghost:hover, .btn-outline:hover { opacity: 0.9; }
