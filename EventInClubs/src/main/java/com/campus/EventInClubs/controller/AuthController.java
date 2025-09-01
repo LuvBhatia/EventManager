@@ -26,16 +26,24 @@ public class AuthController {
     // ---------------- REGISTER ----------------
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
-        Role role;
         try {
-            role = Role.valueOf(req.getRole().toUpperCase());
+            Role role;
+            try {
+                role = Role.valueOf(req.getRole().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "role must be one of STUDENT, CLUB_ADMIN, SUPER_ADMIN"));
+            }
+
+            userService.register(req.getName(), req.getEmail(), req.getPassword(), role);
+            return ResponseEntity.ok(Map.of("message", "user registered successfully"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "role must be one of STUDENT, CLUB_ADMIN, SUPER_ADMIN"));
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Registration failed: " + e.getMessage()));
         }
-
-        userService.register(req.getName(), req.getEmail(), req.getPassword(), role);
-        return ResponseEntity.ok(Map.of("message", "user registered successfully"));
     }
 
     // ---------------- LOGIN ----------------
