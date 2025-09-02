@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { loginUser } from "../api/auth";
+import { loginUser, googleLogin } from "../api/auth";
 import "./Auth.css";
 
 export default function Login() {
@@ -81,9 +81,46 @@ export default function Login() {
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    console.log(`Logging in with ${provider}`);
-    // Implement social login logic here
+  const handleGoogleClick = () => {
+    /* global google */
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!window.google || !clientId) {
+      setErrors({ general: "Google login not configured" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "openid email profile",
+        callback: async (resp) => {
+          try {
+            const idToken = resp.access_token ? undefined : undefined;
+          } catch {}
+        }
+      });
+      const authClient = google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          try {
+            const res = await googleLogin(response.credential);
+            const { token, email, role } = res.data;
+            localStorage.setItem("token", token);
+            localStorage.setItem("email", email);
+            localStorage.setItem("role", role);
+            navigate("/");
+          } catch (e) {
+            setErrors({ general: "Google login failed" });
+          } finally {
+            setLoading(false);
+          }
+        }
+      });
+      google.accounts.id.prompt();
+    } catch (e) {
+      setLoading(false);
+      setErrors({ general: "Google login failed to initialize" });
+    }
   };
 
   const handleForgotPassword = () => {
@@ -206,18 +243,10 @@ export default function Login() {
             <button
               type="button"
               className="social-button google"
-              onClick={() => handleSocialLogin('Google')}
+              onClick={handleGoogleClick}
             >
-              <span className="social-icon">🔍</span>
-              Google
-            </button>
-            <button
-              type="button"
-              className="social-button github"
-              onClick={() => handleSocialLogin('GitHub')}
-            >
-              <span className="social-icon">🐙</span>
-              GitHub
+              <span className="social-icon">G</span>
+              Continue with Google
             </button>
           </div>
 

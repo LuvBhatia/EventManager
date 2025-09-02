@@ -135,9 +135,38 @@ export default function Register() {
     return { text: texts[passwordStrength - 1] || "Very Weak", color: colors[passwordStrength - 1] || "#ff4444" };
   };
 
-  const handleSocialRegister = (provider) => {
-    console.log(`Registering with ${provider}`);
-    // Implement social registration logic here
+  const handleGoogleRegister = () => {
+    /* global google */
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!window.google || !clientId) {
+      setErrors({ general: "Google signup not configured" });
+      return;
+    }
+    try {
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => {
+          // We'll just reuse the login flow on backend to create/sign-in
+          fetch(`${import.meta.env.VITE_API_BASE || ''}/api/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: response.credential })
+          }).then(res => res.json()).then(data => {
+            if (data.token) {
+              localStorage.setItem('token', data.token);
+              localStorage.setItem('email', data.email);
+              localStorage.setItem('role', data.role);
+              navigate('/');
+            } else {
+              setErrors({ general: data.error || 'Google signup failed' });
+            }
+          }).catch(() => setErrors({ general: 'Google signup failed' }));
+        }
+      });
+      google.accounts.id.prompt();
+    } catch (e) {
+      setErrors({ general: 'Google signup failed to initialize' });
+    }
   };
 
   return (
@@ -328,18 +357,10 @@ export default function Register() {
             <button
               type="button"
               className="social-button google"
-              onClick={() => handleSocialRegister('Google')}
+              onClick={handleGoogleRegister}
             >
-              <span className="social-icon">🔍</span>
-              Google
-            </button>
-            <button
-              type="button"
-              className="social-button github"
-              onClick={() => handleSocialRegister('GitHub')}
-            >
-              <span className="social-icon">🐙</span>
-              GitHub
+              <span className="social-icon">G</span>
+              Continue with Google
             </button>
           </div>
 
