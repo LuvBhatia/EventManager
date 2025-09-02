@@ -37,12 +37,15 @@ public class Club {
     private String shortName;
 
     @Column(name = "member_count")
+    @Builder.Default
     private Integer memberCount = 0;
 
     @Column(name = "event_count")
+    @Builder.Default
     private Integer eventCount = 0;
 
     @Column(name = "rating")
+    @Builder.Default
     private Double rating = 0.0;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -50,12 +53,15 @@ public class Club {
     private User adminUser;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "created_at", nullable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
+    @Builder.Default
     private Instant updatedAt = Instant.now();
 
     @PreUpdate

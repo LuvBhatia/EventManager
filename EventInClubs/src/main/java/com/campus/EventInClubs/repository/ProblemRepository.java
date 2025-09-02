@@ -15,16 +15,17 @@ import java.util.List;
 @Repository
 public interface ProblemRepository extends JpaRepository<Problem, Long> {
     
+    // Basic queries
+    List<Problem> findByIsActiveTrueOrderByCreatedAtDesc();
     List<Problem> findByClubId(Long clubId);
-    
-    List<Problem> findByClubIdAndStatus(Long clubId, ProblemStatus status);
-    
+    List<Problem> findByClubIdAndIsActiveTrueOrderByCreatedAtDesc(Long clubId);
+    List<Problem> findByCategoryAndIsActiveTrueOrderByCreatedAtDesc(String category);
     List<Problem> findByPostedById(Long postedById);
     
+    // Legacy methods for backward compatibility
+    List<Problem> findByClubIdAndStatus(Long clubId, ProblemStatus status);
     List<Problem> findByStatus(ProblemStatus status);
-    
     List<Problem> findByCategory(String category);
-    
     List<Problem> findByDeadlineBefore(Instant deadline);
     
     @Query("SELECT p FROM Problem p WHERE p.status = 'OPEN' AND p.deadline > :now ORDER BY p.createdAt DESC")
@@ -44,4 +45,18 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     
     @Query("SELECT COUNT(p) FROM Problem p WHERE p.club.id = :clubId AND p.status = :status")
     Long countByClubIdAndStatus(@Param("clubId") Long clubId, @Param("status") ProblemStatus status);
+    
+    // Search methods
+    @Query("SELECT p FROM Problem p WHERE p.isActive = true AND " +
+           "(LOWER(p.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(p.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(p.category) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+           "ORDER BY p.createdAt DESC")
+    List<Problem> searchActiveProblems(@Param("searchTerm") String searchTerm);
+    
+    // Trending problems method
+    @Query("SELECT p FROM Problem p WHERE p.isActive = true ORDER BY " +
+           "(SELECT COUNT(i) FROM Idea i WHERE i.problem.id = p.id AND i.isActive = true) DESC, " +
+           "p.createdAt DESC")
+    List<Problem> findTrendingProblems();
 }

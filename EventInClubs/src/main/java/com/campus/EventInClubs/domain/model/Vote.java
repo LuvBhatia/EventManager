@@ -32,10 +32,20 @@ public class Vote {
     private VoteType voteType;
 
     @Column(name = "created_at", nullable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 
+    @Column(name = "updated_at", nullable = false)
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
+
     public enum VoteType {
-        UP,     // Upvote - positive feedback
-        DOWN    // Downvote - negative feedback
+        UP,         // Upvote - positive feedback
+        DOWN        // Downvote - negative feedback
     }
 }

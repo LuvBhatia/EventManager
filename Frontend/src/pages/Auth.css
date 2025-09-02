@@ -156,19 +156,28 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
+
 
 .input-icon {
   position: absolute;
   left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 1.125rem;
   color: #9ca3af;
-  z-index: 2;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
 }
 
 .input-wrapper input {
   width: 100%;
-  padding: 16px 16px 16px 48px;
+  padding: 16px 48px 16px 56px;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   font-size: 1rem;
@@ -178,6 +187,11 @@
   outline: none;
   -webkit-text-fill-color: #374151; /* For webkit browsers */
   -webkit-appearance: none; /* Remove default styling */
+  appearance: none; /* Remove default styling */
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  background-color: white !important;
 }
 
 .input-wrapper input:focus {
@@ -186,6 +200,10 @@
   transform: translateY(-2px);
   color: #374151; /* Ensure text color stays visible on focus */
   -webkit-text-fill-color: #374151; /* For webkit browsers */
+}
+
+.input-wrapper:focus-within .input-icon {
+  color: #667eea;
 }
 
 .input-wrapper input.error {
@@ -208,18 +226,26 @@
   -webkit-box-shadow: 0 0 0 30px white inset !important;
   -webkit-text-fill-color: #374151 !important;
   color: #374151 !important;
+  background-color: white !important;
+  z-index: 2 !important;
 }
 
 .password-toggle {
   position: absolute;
   right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   font-size: 1.25rem;
   cursor: pointer;
   color: #9ca3af;
   transition: color 0.3s ease;
-  z-index: 2;
+  z-index: 4;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .password-toggle:hover {
@@ -590,6 +616,21 @@
     align-items: flex-start;
     gap: 16px;
   }
+  
+  .input-wrapper input {
+    padding: 14px 44px 14px 52px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .input-icon {
+    left: 14px;
+    font-size: 1rem;
+  }
+  
+  .password-toggle {
+    right: 14px;
+    font-size: 1.125rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -609,5 +650,19 @@
     flex-direction: column;
     text-align: center;
     gap: 12px;
+  }
+  
+  .input-wrapper input {
+    padding: 12px 40px 12px 48px;
+  }
+  
+  .input-icon {
+    left: 12px;
+    font-size: 0.9rem;
+  }
+  
+  .password-toggle {
+    right: 12px;
+    font-size: 1rem;
   }
 }

@@ -39,6 +39,10 @@ public class SecurityConfig {
                                 "/api/ping",       // health check
                                 "/api/test/**",    // test endpoints
                                 "/api/clubs/**",   // club endpoints (temporarily public)
+                                "/api/problems/**", // problem endpoints (temporarily public)
+                                "/api/ideas/**",   // idea endpoints (temporarily public)
+                                "/api/votes/**",   // vote endpoints (temporarily public)
+                                "/api/comments/**", // comment endpoints (temporarily public)
                                 "/v3/api-docs/**", // Swagger docs
                                 "/swagger-ui/**"   // Swagger UI
                         ).permitAll()

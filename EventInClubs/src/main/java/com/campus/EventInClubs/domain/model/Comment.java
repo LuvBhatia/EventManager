@@ -37,18 +37,26 @@ public class Comment {
     private Comment parentComment;
 
     @Column(name = "is_edited")
+    @Builder.Default
     private Boolean isEdited = false;
 
     @Column(name = "edited_at")
     private Instant editedAt;
 
     @Column(name = "like_count")
+    @Builder.Default
     private Integer likeCount = 0;
 
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
     @Column(name = "created_at", nullable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
+    @Builder.Default
     private Instant updatedAt = Instant.now();
 
     @PreUpdate

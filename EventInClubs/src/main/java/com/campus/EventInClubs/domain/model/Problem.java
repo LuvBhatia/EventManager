@@ -38,6 +38,15 @@ public class Problem {
     @Column(length = 100)
     private String category;
 
+    @Size(max = 20)
+    @Column(length = 20)
+    @Builder.Default
+    private String priority = "MEDIUM"; // HIGH, MEDIUM, LOW
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
     @Column(name = "deadline")
     private Instant deadline;
 
@@ -49,6 +58,7 @@ public class Problem {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
+    @Builder.Default
     private ProblemStatus status = ProblemStatus.OPEN;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -60,15 +70,19 @@ public class Problem {
     private User postedBy;
 
     @Column(name = "view_count")
+    @Builder.Default
     private Integer viewCount = 0;
 
     @Column(name = "idea_count")
+    @Builder.Default
     private Integer ideaCount = 0;
 
     @Column(name = "created_at", nullable = false)
+    @Builder.Default
     private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
+    @Builder.Default
     private Instant updatedAt = Instant.now();
 
     @PreUpdate

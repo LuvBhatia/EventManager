@@ -27,6 +27,7 @@ export default function Navbar() {
         <nav className="navlinks">
           <Link to="/">Home</Link>
           <Link to="/clubs">Clubs</Link>
+          <Link to="/topics">Club Topics</Link>
           {!token ? (
             <>
               <Link to="/login">Login</Link>

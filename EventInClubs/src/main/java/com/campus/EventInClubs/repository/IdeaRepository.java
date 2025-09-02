@@ -14,14 +14,18 @@ import java.util.List;
 @Repository
 public interface IdeaRepository extends JpaRepository<Idea, Long> {
     
+    // Basic queries
+    List<Idea> findByIsActiveTrueOrderByCreatedAtDesc();
     List<Idea> findByProblemId(Long problemId);
-    
-    List<Idea> findByProblemIdAndStatus(Long problemId, IdeaStatus status);
-    
+    List<Idea> findByProblemIdAndIsActiveTrueOrderByCreatedAtDesc(Long problemId);
     List<Idea> findBySubmittedById(Long submittedById);
+    List<Idea> findBySubmittedByIdAndIsActiveTrueOrderByCreatedAtDesc(Long submittedById);
+    List<Idea> findByStatusAndIsActiveTrueOrderByCreatedAtDesc(String status);
+    List<Idea> findByIsFeaturedTrueAndIsActiveTrueOrderByCreatedAtDesc();
     
+    // Legacy methods for backward compatibility
+    List<Idea> findByProblemIdAndStatus(Long problemId, IdeaStatus status);
     List<Idea> findByStatus(IdeaStatus status);
-    
     List<Idea> findByIsFeaturedTrue();
     
     @Query("SELECT i FROM Idea i WHERE i.problem.id = :problemId ORDER BY i.voteCount DESC, i.createdAt DESC")
@@ -47,4 +51,17 @@ public interface IdeaRepository extends JpaRepository<Idea, Long> {
     
     @Query("SELECT i FROM Idea i WHERE i.submittedBy.id = :userId AND i.status = :status")
     List<Idea> findByUserIdAndStatus(@Param("userId") Long userId, @Param("status") IdeaStatus status);
+    
+    // Search methods
+    @Query("SELECT i FROM Idea i WHERE i.isActive = true AND " +
+           "(LOWER(i.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(i.description) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+           "ORDER BY i.createdAt DESC")
+    List<Idea> searchActiveIdeas(@Param("searchTerm") String searchTerm);
+    
+    // Top ideas method
+    @Query("SELECT i FROM Idea i WHERE i.isActive = true ORDER BY " +
+           "(SELECT COUNT(v) FROM Vote v WHERE v.idea.id = i.id AND v.voteType = 'UPVOTE') DESC, " +
+           "i.createdAt DESC")
+    List<Idea> findTopIdeas();
 }

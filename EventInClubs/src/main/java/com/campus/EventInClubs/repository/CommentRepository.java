@@ -13,11 +13,13 @@ import java.util.List;
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     
+    // Basic queries
     List<Comment> findByIdeaId(Long ideaId);
-    
+    List<Comment> findByIdeaIdAndIsActiveTrueOrderByCreatedAtAsc(Long ideaId);
     List<Comment> findByUserId(Long userId);
-    
+    List<Comment> findByUserIdAndIsActiveTrueOrderByCreatedAtDesc(Long userId);
     List<Comment> findByParentCommentId(Long parentCommentId);
+    List<Comment> findByParentCommentIdAndIsActiveTrueOrderByCreatedAtAsc(Long parentCommentId);
     
     List<Comment> findByIdeaIdAndParentCommentIdIsNull(Long ideaId);
     

@@ -13,13 +13,15 @@ import java.util.Optional;
 @Repository
 public interface VoteRepository extends JpaRepository<Vote, Long> {
     
+    // Basic queries
     Optional<Vote> findByUserIdAndIdeaId(Long userId, Long ideaId);
-    
+    Optional<Vote> findByIdeaIdAndUserId(Long ideaId, Long userId);
     List<Vote> findByIdeaId(Long ideaId);
-    
     List<Vote> findByUserId(Long userId);
-    
     List<Vote> findByIdeaIdAndVoteType(Long ideaId, VoteType voteType);
+    
+    // Count methods
+    Long countByIdeaIdAndVoteType(Long ideaId, String voteType);
     
     @Query("SELECT COUNT(v) FROM Vote v WHERE v.idea.id = :ideaId AND v.voteType = 'UP'")
     Long countUpvotesByIdeaId(@Param("ideaId") Long ideaId);

@@ -5,6 +5,7 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ClubTopics from "./pages/ClubTopics";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
@@ -15,6 +16,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/clubs" element={<Home />} />
+        <Route path="/topics" element={<ClubTopics />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         {/* Example protected page */}
