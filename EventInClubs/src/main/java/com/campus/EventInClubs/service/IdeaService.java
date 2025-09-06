@@ -28,6 +28,8 @@ public class IdeaService {
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
     private final VoteRepository voteRepository;
+    private final NotificationService notificationService;
+    private final AchievementService achievementService;
     
     public List<IdeaDto> getAllActiveIdeas() {
         List<Idea> ideas = ideaRepository.findByIsActiveTrueOrderByCreatedAtDesc();
@@ -112,6 +114,14 @@ public class IdeaService {
         Idea savedIdea = ideaRepository.save(idea);
         log.info("Created new idea: {} for problem: {}", savedIdea.getTitle(), problem.getTitle());
         
+        // Send notification to problem owner
+        if (problem.getPostedBy() != null && !problem.getPostedBy().getId().equals(userId)) {
+            notificationService.notifyNewIdea(problem.getPostedBy().getId(), savedIdea.getTitle(), savedIdea.getId());
+        }
+        
+        // Check for achievements
+        achievementService.checkAndAwardAchievements(userId);
+        
         return convertToDto(savedIdea);
     }
     
@@ -167,6 +177,16 @@ public class IdeaService {
         Idea savedIdea = ideaRepository.save(idea);
         log.info("Updated idea status: {} to {}", savedIdea.getTitle(), status);
         
+        // Send notification to idea owner
+        if (!savedIdea.getSubmittedBy().getId().equals(userId)) {
+            notificationService.notifyIdeaStatusChanged(savedIdea.getSubmittedBy().getId(), status, savedIdea.getId());
+        }
+        
+        // Check for achievements if idea was implemented
+        if (status.equals("IMPLEMENTING") || status.equals("COMPLETED")) {
+            achievementService.checkAndAwardAchievements(savedIdea.getSubmittedBy().getId());
+        }
+        
         return convertToDto(savedIdea);
     }
     
@@ -190,8 +210,8 @@ public class IdeaService {
     
     private IdeaDto convertToDto(Idea idea) {
         // Calculate vote counts
-        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "UPVOTE");
-        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "DOWNVOTE");
+        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "UP");
+        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "DOWN");
         
         return IdeaDto.builder()
                 .id(idea.getId())

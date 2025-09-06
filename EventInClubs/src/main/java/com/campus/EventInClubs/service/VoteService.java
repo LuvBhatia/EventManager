@@ -24,6 +24,8 @@ public class VoteService {
     private final VoteRepository voteRepository;
     private final IdeaRepository ideaRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final AchievementService achievementService;
     
     public Map<String, Object> voteOnIdea(Long ideaId, Long userId, String voteType) {
         // Validate vote type
@@ -89,6 +91,15 @@ public class VoteService {
             voteRepository.save(vote);
             log.info("Added {} vote to idea: {} by user: {}", voteType, idea.getTitle(), user.getName());
             
+            // Send notification to idea owner (if not voting on own idea)
+            if (!idea.getSubmittedBy().getId().equals(userId)) {
+                notificationService.notifyIdeaVoted(idea.getSubmittedBy().getId(), user.getName(), 
+                    voteType.equals("UPVOTE") ? "UP" : "DOWN", ideaId);
+            }
+            
+            // Check for voting achievements
+            achievementService.checkAndAwardAchievements(userId);
+            
             return Map.of(
                 "message", "Vote added",
                 "action", "added",
@@ -103,9 +114,9 @@ public class VoteService {
         // Verify idea exists
         Idea idea = ideaRepository.findById(ideaId)
                 .orElseThrow(() -> new RuntimeException("Idea not found"));
-        
-        long upvotes = voteRepository.countByIdeaIdAndVoteType(ideaId, "UPVOTE");
-        long downvotes = voteRepository.countByIdeaIdAndVoteType(ideaId, "DOWNVOTE");
+        // Calculate vote counts
+        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "UP");
+        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "DOWN");
         long totalVotes = upvotes + downvotes;
         
         return Map.of(

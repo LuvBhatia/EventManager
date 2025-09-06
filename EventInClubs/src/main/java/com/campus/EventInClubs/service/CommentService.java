@@ -26,6 +26,8 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final IdeaRepository ideaRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final AchievementService achievementService;
     
     public List<CommentDto> getCommentsByIdea(Long ideaId) {
         List<Comment> comments = commentRepository.findByIdeaIdAndIsActiveTrueOrderByCreatedAtAsc(ideaId);
@@ -89,6 +91,14 @@ public class CommentService {
         
         Comment savedComment = commentRepository.save(comment);
         log.info("Created new comment on idea: {} by user: {}", idea.getTitle(), user.getName());
+        
+        // Send notification to idea owner (if not commenting on own idea)
+        if (!idea.getSubmittedBy().getId().equals(userId)) {
+            notificationService.notifyIdeaCommented(idea.getSubmittedBy().getId(), user.getName(), idea.getId());
+        }
+        
+        // Check for commenting achievements
+        achievementService.checkAndAwardAchievements(userId);
         
         return convertToDto(savedComment);
     }

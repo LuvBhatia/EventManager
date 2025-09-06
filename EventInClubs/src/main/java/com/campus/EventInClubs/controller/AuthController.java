@@ -60,7 +60,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
 
         return ResponseEntity.ok(Map.of(
                 "token", token,
@@ -96,7 +96,7 @@ public class AuthController {
                 return userService.findByEmail(email).orElseThrow();
             });
 
-            String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+            String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
             return ResponseEntity.ok(Map.of(
                     "token", token,
                     "email", user.getEmail(),

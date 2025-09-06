@@ -46,4 +46,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     
     @Query("SELECT c FROM Comment c WHERE c.idea.id = :ideaId AND c.content LIKE %:searchTerm% ORDER BY c.createdAt DESC")
     List<Comment> searchCommentsByIdeaId(@Param("ideaId") Long ideaId, @Param("searchTerm") String searchTerm);
+    
+    // Additional method for achievement service
+    Long countByUserIdAndIsActiveTrue(Long userId);
 }

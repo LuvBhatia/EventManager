@@ -61,7 +61,11 @@ public interface IdeaRepository extends JpaRepository<Idea, Long> {
     
     // Top ideas method
     @Query("SELECT i FROM Idea i WHERE i.isActive = true ORDER BY " +
-           "(SELECT COUNT(v) FROM Vote v WHERE v.idea.id = i.id AND v.voteType = 'UPVOTE') DESC, " +
+           "(SELECT COUNT(v) FROM Vote v WHERE v.idea.id = i.id AND v.voteType = 'UP') DESC, " +
            "i.createdAt DESC")
     List<Idea> findTopIdeas();
+    
+    // Additional methods for achievement service
+    Long countBySubmittedByIdAndIsActiveTrue(Long submittedById);
+    Long countBySubmittedByIdAndStatusAndIsActiveTrue(Long submittedById, String status);
 }
