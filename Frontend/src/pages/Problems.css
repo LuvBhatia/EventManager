@@ -84,7 +84,7 @@
   padding: 0.75rem 1.5rem;
   border: 2px solid #e5e7eb;
   background: white;
-  color: #6b7280;
+  color: #7c3aed;
   border-radius: 25px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -193,11 +193,12 @@
 }
 
 .problem-description {
-  color: #6b7280;
+  color: #7c3aed;
   line-height: 1.6;
   margin-bottom: 1.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -215,7 +216,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #6b7280;
+  color: #7c3aed;
   font-weight: 500;
 }
 
@@ -224,7 +225,7 @@
 }
 
 .problem-date {
-  color: #9ca3af;
+  color: #8b5cf6;
   font-size: 0.9rem;
 }
 

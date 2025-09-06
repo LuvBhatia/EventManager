@@ -43,8 +43,8 @@ input, textarea, select {
 }
 
 input::placeholder, textarea::placeholder {
-  color: #9ca3af !important;
-  -webkit-text-fill-color: #9ca3af !important;
+  color: #8b5cf6 !important;
+  -webkit-text-fill-color: #8b5cf6 !important;
 }
 
 .container { 

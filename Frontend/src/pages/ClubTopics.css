@@ -84,7 +84,7 @@
   padding: 0.75rem 1.5rem;
   border: 2px solid #e5e7eb;
   background: white;
-  color: #6b7280;
+  color: #7c3aed;
   border-radius: 25px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -192,7 +192,7 @@
 }
 
 .topic-description {
-  color: #6b7280;
+  color: #7c3aed;
   line-height: 1.6;
   margin-bottom: 1.5rem;
 }
@@ -210,7 +210,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #6b7280;
+  color: #7c3aed;
   font-weight: 500;
 }
 
@@ -285,7 +285,7 @@
 }
 
 .ideas-header p {
-  color: #6b7280;
+  color: #7c3aed;
   font-size: 0.9rem;
 }
 
@@ -373,7 +373,7 @@
 }
 
 .idea-implementation p, .idea-outcome p {
-  color: #6b7280;
+  color: #7c3aed;
   margin: 0;
   line-height: 1.5;
 }
@@ -388,7 +388,7 @@
 }
 
 .idea-author {
-  color: #6b7280;
+  color: #7c3aed;
 }
 
 .idea-status {
@@ -425,13 +425,13 @@
 }
 
 .idea-date {
-  color: #9ca3af;
+  color: #8b5cf6;
 }
 
 .no-ideas {
   text-align: center;
   padding: 2rem;
-  color: #6b7280;
+  color: #7c3aed;
   background: #f8fafc;
   border-radius: 12px;
   border: 2px dashed #e5e7eb;
@@ -512,7 +512,7 @@
 .btn-cancel {
   padding: 0.75rem 2rem;
   background: white;
-  color: #6b7280;
+  color: #7c3aed;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   font-weight: 600;

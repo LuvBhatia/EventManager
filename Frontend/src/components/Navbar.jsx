@@ -1,10 +1,15 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import NotificationBell from "./NotificationBell";
+import AchievementBadge from "./AchievementBadge";
 import "./Navbar.css";
 
 export default function Navbar() {
   const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
   const navigate = useNavigate();
+  
+  const isAdmin = role === 'ADMIN' || role === 'CLUB_ADMIN';
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -25,16 +30,20 @@ export default function Navbar() {
         </div>
 
         <nav className="navlinks">
-          <Link to="/">Home</Link>
-          <Link to="/clubs">Clubs</Link>
-          {token && <Link to="/topics">Club Topics</Link>}
+          {!isAdmin && <Link to="/">Home</Link>}
+          {token && !isAdmin && <Link to="/clubs">Clubs</Link>}
+          {token && !isAdmin && <Link to="/topics">Club Topics</Link>}
           {!token ? (
             <>
               <Link to="/login">Login</Link>
               <Link to="/register" className="btn-outline">Register</Link>
             </>
           ) : (
-            <button className="btn-ghost" onClick={logout}>Logout</button>
+            <div className="user-actions">
+              {!isAdmin && <AchievementBadge />}
+              {!isAdmin && <NotificationBell />}
+              <button className="btn-ghost" onClick={logout}>Logout</button>
+            </div>
           )}
         </nav>
       </div>

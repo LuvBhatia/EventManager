@@ -5,8 +5,12 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Clubs from "./pages/Clubs";
 import ClubTopics from "./pages/ClubTopics";
+import ClubAdminDashboard from "./pages/ClubAdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import NotificationBell from "./components/NotificationBell";
+import AchievementBadge from "./components/AchievementBadge";
 import "./App.css";
 
 export default function App() {
@@ -15,8 +19,9 @@ export default function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/clubs" element={<Home />} />
+        <Route path="/clubs" element={<ProtectedRoute><Clubs /></ProtectedRoute>} />
         <Route path="/topics" element={<ProtectedRoute><ClubTopics /></ProtectedRoute>} />
+        <Route path="/admin/dashboard" element={<ProtectedRoute><ClubAdminDashboard /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         {/* Example protected page */}

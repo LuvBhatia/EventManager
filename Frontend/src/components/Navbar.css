@@ -8,6 +8,16 @@
 .logo-emoji { font-size: 28px; }
 .brand-title { font-weight: 700; font-size: 18px; color: #fff; }
 .brand-sub { font-size: 12px; color: #9aa6b2; margin-top: -2px; }
+.navlinks {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
 .navlinks a, .navlinks button { color: #dbe7f0; margin-left: 16px; text-decoration: none; }
 .btn-outline { background: #fff; color: #0f1724; padding: 6px 10px; border-radius: 6px; margin-left: 12px; font-weight: 600; }
 .btn-ghost { background: transparent; color: #dbe7f0; border: 1px solid transparent; padding: 6px 10px; border-radius: 6px; cursor: pointer; }

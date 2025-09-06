@@ -1,7 +1,7 @@
 import React from "react";
 import "./ClubCard.css";
 
-export default function ClubCard({ name, desc, shortName, members, events, category, rating }) {
+export default function ClubCard({ name, desc, shortName, events, category, rating }) {
   const handleViewIdeas = () => {
     console.log(`Viewing ideas for ${name}`);
     // Navigate to club ideas page or show modal
@@ -44,10 +44,6 @@ export default function ClubCard({ name, desc, shortName, members, events, categ
         <p>{desc}</p>
         <div className="club-stats">
           <span className="stat">
-            <span className="stat-number">{members}</span>
-            <span className="stat-label">members</span>
-          </span>
-          <span className="stat">
             <span className="stat-number">{events}</span>
             <span className="stat-label">events</span>
           </span>
@@ -55,9 +51,6 @@ export default function ClubCard({ name, desc, shortName, members, events, categ
         <div className="club-actions">
           <button onClick={handleViewIdeas} className="btn-primary">
             View Ideas
-          </button>
-          <button onClick={handleFollow} className="btn-outline">
-            Follow
           </button>
         </div>
       </div>

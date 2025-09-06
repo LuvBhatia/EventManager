@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { loginUser, googleLogin } from "../api/auth";
+import { loginUser } from "../api/auth";
+import GoogleSignIn from "../components/GoogleSignIn";
 import "./Auth.css";
 
 export default function Login() {
@@ -70,7 +71,12 @@ export default function Login() {
       
       // Show success message before redirecting
       setTimeout(() => {
-        navigate("/");
+        // Redirect based on user role
+        if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/");
+        }
       }, 1000);
       
     } catch (err) {
@@ -81,46 +87,30 @@ export default function Login() {
     }
   };
 
-  const handleGoogleClick = () => {
-    /* global google */
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!window.google || !clientId) {
-      setErrors({ general: "Google login not configured" });
-      return;
+  const handleGoogleSuccess = (data) => {
+    const { token, email, role } = data;
+    
+    localStorage.setItem("token", token);
+    localStorage.setItem("email", email);
+    localStorage.setItem("role", role);
+    
+    if (rememberMe) {
+      localStorage.setItem("rememberMe", "true");
     }
-    setLoading(true);
-    try {
-      const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: "openid email profile",
-        callback: async (resp) => {
-          try {
-            const idToken = resp.access_token ? undefined : undefined;
-          } catch {}
-        }
-      });
-      const authClient = google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response) => {
-          try {
-            const res = await googleLogin(response.credential);
-            const { token, email, role } = res.data;
-            localStorage.setItem("token", token);
-            localStorage.setItem("email", email);
-            localStorage.setItem("role", role);
-            navigate("/");
-          } catch (e) {
-            setErrors({ general: "Google login failed" });
-          } finally {
-            setLoading(false);
-          }
-        }
-      });
-      google.accounts.id.prompt();
-    } catch (e) {
-      setLoading(false);
-      setErrors({ general: "Google login failed to initialize" });
-    }
+    
+    // Show success and redirect
+    setTimeout(() => {
+      // Redirect based on user role
+      if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/");
+      }
+    }, 1000);
+  };
+
+  const handleGoogleError = (errorMessage) => {
+    setErrors({ general: errorMessage });
   };
 
   const handleForgotPassword = () => {
@@ -240,14 +230,12 @@ export default function Login() {
           </div>
 
           <div className="social-login">
-            <button
-              type="button"
-              className="social-button google"
-              onClick={handleGoogleClick}
-            >
-              <span className="social-icon">G</span>
-              Continue with Google
-            </button>
+            <GoogleSignIn
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              loading={loading}
+              setLoading={setLoading}
+            />
           </div>
 
           <div className="auth-footer">
