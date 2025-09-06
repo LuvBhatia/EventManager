@@ -29,6 +29,7 @@ public class ClubController {
     public ResponseEntity<List<ClubDto>> getAllActiveClubs() {
         try {
             List<ClubDto> clubs = clubService.getAllActiveClubs();
+            log.info("Returning {} clubs to frontend", clubs.size());
             return ResponseEntity.ok(clubs);
         } catch (Exception e) {
             log.error("Error fetching all clubs", e);
@@ -175,6 +176,46 @@ public class ClubController {
             return ResponseEntity.ok(categories);
         } catch (Exception e) {
             log.error("Error fetching categories", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Super Admin endpoints for club approval
+    @GetMapping("/pending")
+    public ResponseEntity<List<ClubDto>> getPendingClubs() {
+        try {
+            List<ClubDto> pendingClubs = clubService.getPendingClubs();
+            return ResponseEntity.ok(pendingClubs);
+        } catch (Exception e) {
+            log.error("Error fetching pending clubs", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<ClubDto> approveClub(@PathVariable Long id) {
+        try {
+            ClubDto approvedClub = clubService.approveClub(id);
+            return ResponseEntity.ok(approvedClub);
+        } catch (RuntimeException e) {
+            log.error("Error approving club: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error approving club with id: {}", id, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<ClubDto> rejectClub(@PathVariable Long id) {
+        try {
+            ClubDto rejectedClub = clubService.rejectClub(id);
+            return ResponseEntity.ok(rejectedClub);
+        } catch (RuntimeException e) {
+            log.error("Error rejecting club: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error rejecting club with id: {}", id, e);
             return ResponseEntity.internalServerError().build();
         }
     }

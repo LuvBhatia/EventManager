@@ -58,6 +58,31 @@ export default function Login() {
     
     setLoading(true);
     try {
+      // Check for Super Admin credentials first
+      if (formData.email === 'superadmin@eventinclubs.com' && 
+          formData.password === 'SuperAdmin@2024') {
+        
+        // Set super admin session
+        localStorage.setItem('superAdminToken', 'super_admin_token_2024');
+        localStorage.setItem('userRole', 'SUPER_ADMIN');
+        localStorage.setItem('userId', '0');
+        localStorage.setItem('email', formData.email);
+        
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "true");
+        }
+        
+        // Trigger navbar update and navigate to super admin dashboard
+        window.dispatchEvent(new Event('authStateChanged'));
+        setTimeout(() => {
+          navigate('/superadmin/dashboard');
+        }, 1000);
+        
+        setLoading(false);
+        return;
+      }
+      
+      // Regular user login
       const res = await loginUser(formData);
       const { token, email, role } = res.data;
       

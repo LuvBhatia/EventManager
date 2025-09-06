@@ -24,6 +24,7 @@ public class ClubDto {
     private Long adminUserId;
     private String adminUserName;
     private Boolean isActive;
+    private String approvalStatus;
     private Instant createdAt;
     private Instant updatedAt;
 }

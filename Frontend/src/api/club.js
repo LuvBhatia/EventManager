@@ -122,5 +122,36 @@ export const clubApi = {
       console.error('Error fetching categories:', error);
       throw error;
     }
+  },
+
+  // Super Admin endpoints for club approval
+  getPendingClubs: async () => {
+    try {
+      const response = await http.get(`${CLUB_API_BASE}/pending`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching pending clubs:', error);
+      throw error;
+    }
+  },
+
+  approveClub: async (clubId) => {
+    try {
+      const response = await http.post(`${CLUB_API_BASE}/${clubId}/approve`);
+      return response.data;
+    } catch (error) {
+      console.error('Error approving club:', error);
+      throw error;
+    }
+  },
+
+  rejectClub: async (clubId) => {
+    try {
+      const response = await http.post(`${CLUB_API_BASE}/${clubId}/reject`);
+      return response.data;
+    } catch (error) {
+      console.error('Error rejecting club:', error);
+      throw error;
+    }
   }
 };

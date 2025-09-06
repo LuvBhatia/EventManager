@@ -1,8 +1,11 @@
 package com.campus.EventInClubs.service;
 
+import com.campus.EventInClubs.domain.model.ApprovalStatus;
 import com.campus.EventInClubs.domain.model.Club;
 import com.campus.EventInClubs.domain.model.User;
 import com.campus.EventInClubs.dto.ClubDto;
+
+import java.util.ArrayList;
 import com.campus.EventInClubs.repository.ClubRepository;
 import com.campus.EventInClubs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +27,43 @@ public class ClubService {
     private final UserRepository userRepository;
     
     public List<ClubDto> getAllActiveClubs() {
-        List<Club> clubs = clubRepository.findByIsActiveTrue();
-        return clubs.stream()
+        try {
+            List<Club> clubs = clubRepository.findByIsActiveTrue();
+            log.info("Found {} active clubs", clubs.size());
+            return clubs.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error fetching active clubs", e);
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<ClubDto> getPendingClubs() {
+        return clubRepository.findByApprovalStatus(ApprovalStatus.PENDING)
+                .stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+    
+    public ClubDto approveClub(Long clubId) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new RuntimeException("Club not found with id: " + clubId));
+        
+        club.setApprovalStatus(ApprovalStatus.APPROVED);
+        club.setIsActive(true);
+        Club savedClub = clubRepository.save(club);
+        return convertToDto(savedClub);
+    }
+    
+    public ClubDto rejectClub(Long clubId) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new RuntimeException("Club not found with id: " + clubId));
+        
+        club.setApprovalStatus(ApprovalStatus.REJECTED);
+        club.setIsActive(false);
+        Club savedClub = clubRepository.save(club);
+        return convertToDto(savedClub);
     }
     
     public List<ClubDto> getClubsByCategory(String category) {
@@ -100,7 +136,8 @@ public class ClubService {
                 .eventCount(clubDto.getEventCount() != null ? clubDto.getEventCount() : 0)
                 .rating(clubDto.getRating() != null ? clubDto.getRating() : 0.0)
                 .adminUser(adminUser)
-                .isActive(clubDto.getIsActive() != null ? clubDto.getIsActive() : false)
+                .isActive(false)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
         
         Club savedClub = clubRepository.save(club);
@@ -191,6 +228,7 @@ public class ClubService {
                 .rating(club.getRating())
                 .adminUserId(club.getAdminUser() != null ? club.getAdminUser().getId() : null)
                 .adminUserName(club.getAdminUser() != null ? club.getAdminUser().getName() : null)
+                .approvalStatus(club.getApprovalStatus() != null ? club.getApprovalStatus().toString() : null)
                 .isActive(club.getIsActive())
                 .createdAt(club.getCreatedAt())
                 .updatedAt(club.getUpdatedAt())

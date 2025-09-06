@@ -1,5 +1,6 @@
 package com.campus.EventInClubs.repository;
 
+import com.campus.EventInClubs.domain.model.ApprovalStatus;
 import com.campus.EventInClubs.domain.model.Club;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,8 @@ public interface ClubRepository extends JpaRepository<Club, Long> {
     List<Club> findByCategory(String category);
     
     List<Club> findByIsActiveTrue();
+    List<Club> findByIsActiveTrueAndApprovalStatus(ApprovalStatus approvalStatus);
+    List<Club> findByApprovalStatus(ApprovalStatus approvalStatus);
     
     List<Club> findByAdminUserId(Long adminUserId);
     

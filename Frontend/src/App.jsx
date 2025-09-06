@@ -7,7 +7,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Clubs from "./pages/Clubs";
 import ClubTopics from "./pages/ClubTopics";
-import ClubAdminDashboard from "./pages/ClubAdminDashboard";
+import ClubAdminDashboard from './pages/ClubAdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
 import AchievementBadge from "./components/AchievementBadge";
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/clubs" element={<ProtectedRoute><Clubs /></ProtectedRoute>} />
         <Route path="/topics" element={<ProtectedRoute><ClubTopics /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<ProtectedRoute><ClubAdminDashboard /></ProtectedRoute>} />
+        <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         {/* Example protected page */}

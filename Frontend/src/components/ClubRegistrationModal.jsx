@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+// Removed lucide-react import to avoid dependency issues
 import './ClubRegistrationModal.css';
 
 export default function ClubRegistrationModal({ isOpen, onClose, onSubmit }) {
@@ -106,7 +106,7 @@ export default function ClubRegistrationModal({ isOpen, onClose, onSubmit }) {
         <div className="modal-header">
           <h2>Register New Club</h2>
           <button className="modal-close" onClick={handleClose}>
-            <X size={20} />
+            ✕
           </button>
         </div>
 
