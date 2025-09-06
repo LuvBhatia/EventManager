@@ -87,7 +87,7 @@ public class Event {
     @Column(name = "external_link")
     private String externalLink;
     
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_active", nullable = true)
     @Builder.Default
     private Boolean isActive = true;
     

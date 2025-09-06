@@ -1303,6 +1303,273 @@
   }
 }
 
+/* Actions Dropdown Styles */
+.table-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  min-width: 140px;
+  z-index: 1000;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.dropdown-item.remove {
+  color: #e53e3e;
+}
+
+.dropdown-item.remove:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+/* Proposal Ideas Styles */
+.proposal-card.expandable {
+  transition: all 0.3s ease;
+}
+
+.proposal-card.expandable .proposal-header {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.proposal-card.expandable .proposal-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.proposal-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expand-icon {
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.proposal-ideas-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ideas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ideas-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.ideas-count {
+  background: rgba(102, 126, 234, 0.2);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ideas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.idea-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.idea-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.idea-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.idea-title-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.idea-title-section h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.idea-status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.idea-status.submitted {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.idea-status.under_review {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.idea-status.approved {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.idea-votes {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.upvotes, .downvotes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.upvotes {
+  color: #34d399;
+}
+
+.downvotes {
+  color: #f87171;
+}
+
+.idea-description {
+  margin: 8px 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.4;
+}
+
+.idea-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.idea-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.idea-actions .btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.btn-warning {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+.btn-warning:hover {
+  background: rgba(245, 158, 11, 0.3);
+  transform: translateY(-1px);
+}
+
+.loading-ideas {
+  text-align: center;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.proposal-description {
+  margin: 12px 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid rgba(102, 126, 234, 0.5);
+}
+
+.proposal-description p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.4;
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,

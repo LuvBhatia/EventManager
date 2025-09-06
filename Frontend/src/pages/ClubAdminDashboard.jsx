@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Users, 
-  Calendar, 
-  FileText, 
-  TrendingUp, 
-  Bell, 
-  Plus,
-  Edit3,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Award,
-  MessageSquare
-} from 'lucide-react';
 import { clubApi } from '../api/club';
-import { eventApi } from '../api/event';
+import { eventApi } from '../api/event.js';
+import { ideaApi } from '../api/idea.js';
 import ClubRegistrationModal from '../components/ClubRegistrationModal';
 import EventManagementModal from '../components/EventManagementModal';
 import './ClubAdminDashboard.css';
@@ -31,6 +16,9 @@ export default function ClubAdminDashboard() {
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [expandedProposals, setExpandedProposals] = useState({});
+  const [proposalIdeas, setProposalIdeas] = useState({});
   // Fetch real data from APIs
   useEffect(() => {
     fetchClubs();
@@ -56,11 +44,73 @@ export default function ClubAdminDashboard() {
   };
 
   const fetchProposals = async () => {
-    // Mock data for now - replace with real API call
-    setProposals([
-      { id: 1, title: 'AI Workshop Series', votes: 45, status: 'pending', submittedBy: 'John Doe', date: '2024-01-15' },
-      { id: 2, title: 'Hackathon 2024', votes: 78, status: 'approved', submittedBy: 'Jane Smith', date: '2024-01-14' }
-    ]);
+    // Use events as proposals since they are the topics for idea submissions
+    try {
+      const eventsData = await eventApi.getEventsAcceptingIdeas();
+      // Transform events to proposal format
+      const proposalsData = eventsData.map(event => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        votes: 0, // Will be calculated from ideas
+        status: event.status?.toLowerCase() || 'active',
+        submittedBy: event.clubName,
+        date: new Date(event.createdAt || Date.now()).toISOString().split('T')[0],
+        clubName: event.clubName,
+        ideaSubmissionDeadline: event.ideaSubmissionDeadline,
+        type: event.type
+      }));
+      setProposals(proposalsData);
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+      setProposals([]);
+    }
+  };
+
+  const fetchIdeasForProposal = async (proposalId) => {
+    try {
+      // Use real API to fetch ideas for the event/topic
+      const ideas = await ideaApi.getIdeasByProblem(proposalId);
+      
+      // Sort by upvotes (highest first)
+      const sortedIdeas = ideas.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
+      
+      // Calculate total votes for the proposal
+      const totalVotes = sortedIdeas.reduce((sum, idea) => sum + (idea.upvotes || 0), 0);
+      
+      // Update proposal votes count
+      setProposals(prev => prev.map(proposal => 
+        proposal.id === proposalId 
+          ? { ...proposal, votes: totalVotes }
+          : proposal
+      ));
+      
+      setProposalIdeas(prev => ({
+        ...prev,
+        [proposalId]: sortedIdeas
+      }));
+    } catch (error) {
+      console.error('Error fetching ideas for proposal:', error);
+      // Fallback to empty array if API fails
+      setProposalIdeas(prev => ({
+        ...prev,
+        [proposalId]: []
+      }));
+    }
+  };
+
+  const toggleProposal = async (proposalId) => {
+    const isExpanded = expandedProposals[proposalId];
+    
+    setExpandedProposals(prev => ({
+      ...prev,
+      [proposalId]: !isExpanded
+    }));
+
+    // Fetch ideas if expanding and not already loaded
+    if (!isExpanded && !proposalIdeas[proposalId]) {
+      await fetchIdeasForProposal(proposalId);
+    }
   };
 
   const fetchEvents = async () => {
@@ -89,10 +139,6 @@ export default function ClubAdminDashboard() {
     setShowEventModal(true);
   };
 
-  const handleEditEvent = (event) => {
-    setSelectedEvent(event);
-    setShowEventModal(true);
-  };
 
   const handleDeleteEvent = async (eventId) => {
     if (window.confirm('Are you sure you want to delete this event?')) {
@@ -129,6 +175,29 @@ export default function ClubAdminDashboard() {
   const handleEventSaved = async (savedEvent) => {
     console.log('Event saved:', savedEvent);
     await fetchEvents(); // Refresh events list immediately
+  };
+
+  const toggleDropdown = (eventId) => {
+    setActiveDropdown(activeDropdown === eventId ? null : eventId);
+  };
+
+  const handleEditEvent = (event) => {
+    setSelectedEvent(event);
+    setShowEventModal(true);
+    setActiveDropdown(null);
+  };
+
+  const handleRemoveEvent = async (eventId) => {
+    if (window.confirm('Are you sure you want to remove this topic? This action cannot be undone.')) {
+      try {
+        await eventApi.deleteEvent(eventId);
+        await fetchEvents(); // Refresh events list
+        setActiveDropdown(null);
+      } catch (error) {
+        console.error('Error removing event:', error);
+        alert('Failed to remove topic. Please try again.');
+      }
+    }
   };
 
 
@@ -174,7 +243,7 @@ export default function ClubAdminDashboard() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">
-            <Users />
+            👥
           </div>
           <div className="stat-content">
             <h3>{clubs.length}</h3>
@@ -184,7 +253,7 @@ export default function ClubAdminDashboard() {
         
         <div className="stat-card">
           <div className="stat-icon">
-            <Calendar />
+            📅
           </div>
           <div className="stat-content">
             <h3>{events.length}</h3>
@@ -194,7 +263,7 @@ export default function ClubAdminDashboard() {
         
         <div className="stat-card">
           <div className="stat-icon">
-            <FileText />
+            📄
           </div>
           <div className="stat-content">
             <h3>{proposals.length}</h3>
@@ -204,7 +273,7 @@ export default function ClubAdminDashboard() {
         
         <div className="stat-card">
           <div className="stat-icon">
-            <TrendingUp />
+            📈
           </div>
           <div className="stat-content">
             <h3>85%</h3>
@@ -219,7 +288,7 @@ export default function ClubAdminDashboard() {
           {notifications.map(notification => (
             <div key={notification.id} className="activity-item">
               <div className="activity-icon">
-                {notification.type === 'proposal' ? <FileText size={16} /> : <Clock size={16} />}
+                {notification.type === 'proposal' ? '📄' : '🕐'}
               </div>
               <div className="activity-content">
                 <p>{notification.message}</p>
@@ -270,11 +339,11 @@ export default function ClubAdminDashboard() {
               </div>
               <div className="club-actions">
                 <button className="btn-secondary">
-                  <Edit3 size={16} />
+                  ✏️
                   Edit
                 </button>
                 <button className="btn-secondary">
-                  <Eye size={16} />
+                  👁️
                   View
                 </button>
               </div>
@@ -294,7 +363,7 @@ export default function ClubAdminDashboard() {
             className="btn-primary" 
             onClick={handleCreateTopic}
           >
-            <Plus size={16} />
+            ➕
             Create New Topic
           </button>
         </div>
@@ -306,7 +375,7 @@ export default function ClubAdminDashboard() {
         </div>
       ) : events.length === 0 ? (
         <div className="empty-state">
-          <Calendar className="empty-state-icon" />
+          <div className="empty-state-icon">📅</div>
           <h3>No Topics Available</h3>
           <p>There are currently no topics where you can propose ideas. Check back later!</p>
         </div>
@@ -354,14 +423,31 @@ export default function ClubAdminDashboard() {
                           </td>
                           <td>
                             <div className="table-actions">
-                              <button 
-                                className="btn-primary btn-sm" 
-                                onClick={() => handleProposeIdea(event)}
-                                title="Propose idea for this topic"
-                              >
-                                <Plus size={14} />
-                                Propose Idea
-                              </button>
+                              <div className="actions-dropdown">
+                                <button 
+                                  className="btn-secondary btn-sm dropdown-toggle" 
+                                  onClick={() => toggleDropdown(event.id)}
+                                  title="Actions"
+                                >
+                                  ⚙️ Actions
+                                </button>
+                                {activeDropdown === event.id && (
+                                  <div className="dropdown-menu">
+                                    <button 
+                                      className="dropdown-item"
+                                      onClick={() => handleEditEvent(event)}
+                                    >
+                                      ✏️ Edit Details
+                                    </button>
+                                    <button 
+                                      className="dropdown-item remove"
+                                      onClick={() => handleRemoveEvent(event.id)}
+                                    >
+                                      🗑️ Remove
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -388,25 +474,94 @@ export default function ClubAdminDashboard() {
       </div>
       <div className="proposals-grid">
         {proposals.map(proposal => (
-          <div key={proposal.id} className="proposal-card">
-            <div className="proposal-header">
-              <h3>{proposal.title}</h3>
+          <div key={proposal.id} className="proposal-card expandable">
+            <div className="proposal-header" onClick={() => toggleProposal(proposal.id)}>
+              <div className="proposal-title-section">
+                <h3>{proposal.title}</h3>
+                <span className="expand-icon">
+                  {expandedProposals[proposal.id] ? '🔽' : '▶️'}
+                </span>
+              </div>
               <span className={`status ${proposal.status}`}>
                 {proposal.status}
               </span>
             </div>
             <div className="proposal-meta">
-              <p>Submitted by: {proposal.submittedBy}</p>
-              <p>Date: {proposal.date}</p>
-              <p>Votes: {proposal.votes}</p>
+              <p>Organizing Club: {proposal.clubName}</p>
+              <p>Topic Type: {proposal.type}</p>
+              <p>Created: {proposal.date}</p>
+              <p>Total Votes: {proposal.votes}</p>
+              {proposal.ideaSubmissionDeadline && (
+                <p>Idea Deadline: {new Date(proposal.ideaSubmissionDeadline).toLocaleDateString()}</p>
+              )}
             </div>
+            {proposal.description && (
+              <div className="proposal-description">
+                <p>{proposal.description}</p>
+              </div>
+            )}
+            
+            {expandedProposals[proposal.id] && (
+              <div className="proposal-ideas-section">
+                <div className="ideas-header">
+                  <h4>💡 Student Ideas (Sorted by Upvotes)</h4>
+                  <span className="ideas-count">
+                    {proposalIdeas[proposal.id]?.length || 0} ideas
+                  </span>
+                </div>
+                
+                {proposalIdeas[proposal.id] ? (
+                  <div className="ideas-list">
+                    {proposalIdeas[proposal.id].map(idea => (
+                      <div key={idea.id} className="idea-card">
+                        <div className="idea-header">
+                          <div className="idea-title-section">
+                            <h5>{idea.title}</h5>
+                            <span className={`idea-status ${idea.status.toLowerCase()}`}>
+                              {idea.status}
+                            </span>
+                          </div>
+                          <div className="idea-votes">
+                            <span className="upvotes">👍 {idea.upvotes}</span>
+                            <span className="downvotes">👎 {idea.downvotes}</span>
+                          </div>
+                        </div>
+                        <p className="idea-description">{idea.description}</p>
+                        <div className="idea-meta">
+                          <span className="idea-author">By: {idea.submittedByName}</span>
+                          <span className="idea-date">
+                            {new Date(idea.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="idea-actions">
+                          <button className="btn-success btn-sm">
+                            ✅ Approve
+                          </button>
+                          <button className="btn-warning btn-sm">
+                            📝 Review
+                          </button>
+                          <button className="btn-danger btn-sm">
+                            ❌ Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="loading-ideas">
+                    <p>Loading ideas...</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="proposal-actions">
               <button className="btn-success">
-                <CheckCircle size={14} />
+                ✅
                 Approve
               </button>
               <button className="btn-danger">
-                <XCircle size={14} />
+                ❌
                 Reject
               </button>
             </div>
@@ -415,6 +570,7 @@ export default function ClubAdminDashboard() {
       </div>
     </div>
   );
+
 
   const renderAnalytics = () => (
     <div className="analytics-section">
@@ -462,35 +618,35 @@ export default function ClubAdminDashboard() {
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <BarChart3 className="nav-icon" size={20} />
+            <span className="nav-icon">📊</span>
             Overview
           </button>
           <button
             className={`nav-item ${activeTab === 'clubs' ? 'active' : ''}`}
             onClick={() => setActiveTab('clubs')}
           >
-            <Users className="nav-icon" size={20} />
+            <span className="nav-icon">👥</span>
             Club Management
           </button>
           <button
             className={`nav-item ${activeTab === 'events' ? 'active' : ''}`}
             onClick={() => setActiveTab('events')}
           >
-            <Calendar className="nav-icon" size={20} />
+            <span className="nav-icon">📅</span>
             Event Management
           </button>
           <button
             className={`nav-item ${activeTab === 'proposals' ? 'active' : ''}`}
             onClick={() => setActiveTab('proposals')}
           >
-            <FileText className="nav-icon" size={20} />
+            <span className="nav-icon">📄</span>
             Proposals
           </button>
           <button
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
-            <TrendingUp className="nav-icon" size={20} />
+            <span className="nav-icon">📈</span>
             Analytics
           </button>
         </nav>
@@ -501,7 +657,7 @@ export default function ClubAdminDashboard() {
           <h1>Club Administration Dashboard</h1>
           <div className="header-actions">
             <div className="notification-badge">
-              <Bell size={20} />
+              🔔
               {notifications.length > 0 && (
                 <span className="badge">{notifications.length}</span>
               )}
@@ -518,7 +674,7 @@ export default function ClubAdminDashboard() {
         <ClubRegistrationModal
           isOpen={showRegistrationModal}
           onClose={() => setShowRegistrationModal(false)}
-          onClubRegistered={handleClubRegistered}
+          onClubRegistered={handleRegisterClub}
         />
       )}
       

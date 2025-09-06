@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Award, Star } from 'lucide-react';
 import './AchievementBadge.css';
 
 const AchievementBadge = () => {
@@ -106,7 +105,7 @@ const AchievementBadge = () => {
         onClick={() => setShowModal(true)}
         title={`${totalPoints} points earned`}
       >
-        <Trophy size={20} />
+        🏆
         <span className="points-text">{totalPoints}</span>
       </button>
 
@@ -125,14 +124,14 @@ const AchievementBadge = () => {
 
             <div className="achievement-stats">
               <div className="stat-item">
-                <Trophy className="stat-icon" />
+                <span className="stat-icon">🏆</span>
                 <div>
                   <div className="stat-value">{achievements.length}</div>
                   <div className="stat-label">Achievements</div>
                 </div>
               </div>
               <div className="stat-item">
-                <Star className="stat-icon" />
+                <span className="stat-icon">⭐</span>
                 <div>
                   <div className="stat-value">{totalPoints}</div>
                   <div className="stat-label">Total Points</div>
@@ -143,7 +142,7 @@ const AchievementBadge = () => {
             <div className="achievement-content">
               {achievements.length === 0 ? (
                 <div className="no-achievements">
-                  <Award size={48} className="no-achievements-icon" />
+                  <div className="no-achievements-icon">🏅</div>
                   <h3>No achievements yet</h3>
                   <p>Start contributing ideas, voting, and commenting to earn your first achievement!</p>
                 </div>

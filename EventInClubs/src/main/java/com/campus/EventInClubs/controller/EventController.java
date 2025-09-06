@@ -3,6 +3,8 @@ package com.campus.EventInClubs.controller;
 import com.campus.EventInClubs.dto.EventDto;
 import com.campus.EventInClubs.service.EventService;
 import com.campus.EventInClubs.security.JwtUtil;
+import com.campus.EventInClubs.domain.model.Club;
+import com.campus.EventInClubs.repository.ClubRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ public class EventController {
     
     private final EventService eventService;
     private final JwtUtil jwtUtil;
+    private final ClubRepository clubRepository;
     
     @GetMapping
     public ResponseEntity<List<EventDto>> getAllEvents() {
@@ -56,13 +59,28 @@ public class EventController {
             @RequestHeader(value = "Authorization", required = false) String token) {
         
         try {
+            log.info("Received event creation request: {}", eventDto);
+            
             Long userId = null;
             if (token != null && !token.isEmpty()) {
                 String jwt = token.replace("Bearer ", "");
                 userId = jwtUtil.extractUserId(jwt);
             } else {
-                // For testing purposes, use a default user ID when no token is provided
-                userId = 1L;
+                // For testing purposes, use the club admin user ID when no token is provided
+                Club club = clubRepository.findById(eventDto.getClubId())
+                        .orElseThrow(() -> new RuntimeException("Club not found with id: " + eventDto.getClubId()));
+                userId = club.getAdminUser().getId();
+            }
+            
+            // Validate required fields
+            if (eventDto.getTitle() == null || eventDto.getTitle().trim().isEmpty()) {
+                log.error("Event title is required");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            if (eventDto.getClubId() == null) {
+                log.error("Club ID is required");
+                return ResponseEntity.badRequest().build();
             }
             
             EventDto createdEvent = eventService.createEvent(eventDto, userId);
@@ -71,7 +89,7 @@ public class EventController {
             return ResponseEntity.ok(createdEvent);
         } catch (Exception e) {
             log.error("Error creating event: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().build();
         }
     }
     

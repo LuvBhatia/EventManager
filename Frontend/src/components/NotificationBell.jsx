@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X } from 'lucide-react';
 import './NotificationBell.css';
 
 const NotificationBell = () => {
@@ -115,7 +114,7 @@ const NotificationBell = () => {
         className="bell-button"
         onClick={() => setShowDropdown(!showDropdown)}
       >
-        <Bell size={20} />
+        🔔
         {unreadCount > 0 && (
           <span className="notification-badge">{unreadCount}</span>
         )}
@@ -129,7 +128,7 @@ const NotificationBell = () => {
               className="close-button"
               onClick={() => setShowDropdown(false)}
             >
-              <X size={16} />
+              ✕
             </button>
           </div>
 
@@ -162,7 +161,7 @@ const NotificationBell = () => {
                       deleteNotification(notification.id);
                     }}
                   >
-                    <X size={14} />
+                    ✕
                   </button>
                 </div>
               ))

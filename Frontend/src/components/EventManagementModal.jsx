@@ -1,18 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Calendar, 
-  MapPin, 
-  Users, 
-  DollarSign, 
-  Clock, 
-  Tag,
-  Link,
-  Image,
-  Save,
-  Eye,
-  EyeOff
-} from 'lucide-react';
 import { eventApi } from '../api/event';
 import './EventManagementModal.css';
 
@@ -147,19 +133,37 @@ export default function EventManagementModal({
     setIsSubmitting(true);
 
     try {
+      // Validate required fields before sending
+      if (!formData.title || !formData.title.trim()) {
+        setErrors({ title: 'Title is required' });
+        return;
+      }
+      
+      if (!formData.clubId) {
+        setErrors({ clubId: 'Club selection is required' });
+        return;
+      }
+
       const eventData = {
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
+        title: formData.title.trim(),
+        description: formData.description ? formData.description.trim() : null,
+        type: formData.type || 'WORKSHOP',
         clubId: parseInt(formData.clubId),
-        startDate: null, // Not required for topics
-        location: null, // Not required for topics
+        startDate: null,
+        endDate: null,
+        registrationDeadline: null,
+        location: null,
         maxParticipants: null,
         registrationFee: 0.0,
         ideaSubmissionDeadline: formData.ideaSubmissionDeadline ? new Date(formData.ideaSubmissionDeadline).toISOString() : null,
-        acceptsIdeas: true, // Always true for topics
-        status: 'PUBLISHED' // Auto-publish topics
+        acceptsIdeas: true,
+        status: 'PUBLISHED',
+        tags: null,
+        imageUrl: null,
+        externalLink: null
       };
+
+      console.log('Sending event data:', eventData);
 
       let savedEvent;
       if (event) {
@@ -196,11 +200,11 @@ export default function EventManagementModal({
               onClick={() => setShowPreview(!showPreview)}
               className="btn-preview"
             >
-              {showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPreview ? '👁️‍🗨️' : '👁️'}
               {showPreview ? 'Edit' : 'Preview'}
             </button>
             <button onClick={onClose} className="modal-close">
-              <X size={20} />
+              ✕
             </button>
           </div>
         </div>
@@ -216,7 +220,7 @@ export default function EventManagementModal({
             
             <div className="preview-details">
               <div className="detail-item">
-                <Calendar size={16} />
+                📅
                 <span>
                   {formData.startDate ? formatDateTime(formData.startDate) : 'Start date not set'}
                   {formData.endDate && ` - ${formatDateTime(formData.endDate)}`}
@@ -224,34 +228,34 @@ export default function EventManagementModal({
               </div>
               
               <div className="detail-item">
-                <MapPin size={16} />
+📍
                 <span>{formData.location || 'Location not set'}</span>
               </div>
               
               {formData.maxParticipants && (
                 <div className="detail-item">
-                  <Users size={16} />
+                  👥
                   <span>Max {formData.maxParticipants} participants</span>
                 </div>
               )}
               
               {formData.registrationFee > 0 && (
                 <div className="detail-item">
-                  <DollarSign size={16} />
+                  💰
                   <span>${formData.registrationFee}</span>
                 </div>
               )}
               
               {formData.registrationDeadline && (
                 <div className="detail-item">
-                  <Clock size={16} />
+                  🕒
                   <span>Register by {formatDateTime(formData.registrationDeadline)}</span>
                 </div>
               )}
               
               {formData.acceptsIdeas && (
                 <div className="detail-item">
-                  <Tag size={16} />
+                  🏷️
                   <span>
                     Accepts Ideas
                     {formData.ideaSubmissionDeadline && ` until ${formatDateTime(formData.ideaSubmissionDeadline)}`}
@@ -382,7 +386,7 @@ export default function EventManagementModal({
                 className="btn-primary"
                 disabled={isSubmitting}
               >
-                <Save size={16} />
+                💾
                 {isSubmitting ? 'Saving...' : (event ? 'Update Topic' : 'Create Topic')}
               </button>
             </div>
