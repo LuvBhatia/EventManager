@@ -37,4 +37,8 @@ public interface ClubRepository extends JpaRepository<Club, Long> {
     boolean existsByName(String name);
     
     boolean existsByShortName(String shortName);
+    
+    long countByIsActiveTrue();
+    
+    long countByApprovalStatus(ApprovalStatus approvalStatus);
 }

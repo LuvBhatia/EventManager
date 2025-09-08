@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../api/club';
 import { eventApi } from '../api/event.js';
+import { userApi } from '../api/user';
+import { analyticsApi } from '../api/analytics';
 import './SuperAdminDashboard.css';
 
 export default function SuperAdminDashboard() {
@@ -9,6 +11,7 @@ export default function SuperAdminDashboard() {
   const [events, setEvents] = useState([]);
   const [pendingClubs, setPendingClubs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [analytics, setAnalytics] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +24,8 @@ export default function SuperAdminDashboard() {
         fetchClubs(),
         fetchEvents(),
         fetchPendingClubs(),
-        fetchUsers()
+        fetchUsers(),
+        fetchAnalytics()
       ]);
       setLoading(false);
     } catch (error) {
@@ -62,15 +66,21 @@ export default function SuperAdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      // Mock users data - replace with real API
-      setUsers([
-        { id: 1, name: 'John Doe', email: 'john@example.com', role: 'CLUB_ADMIN', status: 'active' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'STUDENT', status: 'active' },
-        { id: 3, name: 'Mike Johnson', email: 'mike@example.com', role: 'CLUB_ADMIN', status: 'inactive' }
-      ]);
+      const usersData = await userApi.getAllUsers();
+      setUsers(usersData || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       setUsers([]);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const analyticsData = await analyticsApi.getSystemAnalytics();
+      setAnalytics(analyticsData || {});
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      setAnalytics({});
     }
   };
 
@@ -260,15 +270,15 @@ export default function SuperAdminDashboard() {
           <div className="analytics-stats">
             <div className="stat-row">
               <span>Active Events:</span>
-              <span>{events.length}</span>
+              <span>{analytics.activeEvents || 0}</span>
             </div>
             <div className="stat-row">
               <span>Club Admins:</span>
-              <span>{users.filter(u => u.role === 'CLUB_ADMIN').length}</span>
+              <span>{analytics.clubAdmins || 0}</span>
             </div>
             <div className="stat-row">
               <span>Students:</span>
-              <span>{users.filter(u => u.role === 'STUDENT').length}</span>
+              <span>{analytics.students || 0}</span>
             </div>
           </div>
         </div>

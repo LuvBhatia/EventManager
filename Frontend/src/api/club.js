@@ -1,6 +1,6 @@
 import http from './http';
 
-const CLUB_API_BASE = '/api/clubs';
+const CLUB_API_BASE = '/clubs';
 
 export const clubApi = {
   // Get all active clubs
