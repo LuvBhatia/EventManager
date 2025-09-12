@@ -2,10 +2,12 @@ package com.campus.EventInClubs.service;
 
 import com.campus.EventInClubs.domain.model.Club;
 import com.campus.EventInClubs.domain.model.Event;
+import com.campus.EventInClubs.domain.model.Idea;
 import com.campus.EventInClubs.domain.model.User;
 import com.campus.EventInClubs.dto.EventDto;
 import com.campus.EventInClubs.repository.ClubRepository;
 import com.campus.EventInClubs.repository.EventRepository;
+import com.campus.EventInClubs.repository.IdeaRepository;
 import com.campus.EventInClubs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ public class EventService {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final IdeaRepository ideaRepository;
     
     public List<EventDto> getAllEvents() {
         return eventRepository.findAll().stream()
@@ -197,15 +200,28 @@ public class EventService {
                 .collect(Collectors.toList());
     }
     
-    // In-memory storage for ideas (in a real app, this would be a database table)
-    private final java.util.Map<Long, java.util.List<java.util.Map<String, Object>>> eventIdeas = new java.util.concurrent.ConcurrentHashMap<>();
-    
     public java.util.List<java.util.Map<String, Object>> getIdeasForEvent(Long eventId) {
         // Verify event exists
-        Event event = eventRepository.findById(eventId)
+        eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found"));
         
-        return eventIdeas.getOrDefault(eventId, new java.util.ArrayList<>());
+        // Fetch ideas from database and convert to map
+        return ideaRepository.findByEventIdAndIsActiveTrueOrderByCreatedAtDesc(eventId).stream()
+                .map(idea -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", idea.getId());
+                    map.put("title", idea.getTitle());
+                    map.put("description", idea.getDescription());
+                    map.put("expectedOutcome", idea.getExpectedOutcome());
+                    map.put("submittedBy", idea.getSubmittedBy().getName());
+                    map.put("submittedByEmail", idea.getSubmittedBy().getEmail());
+                    map.put("submittedById", idea.getSubmittedBy().getId());
+                    map.put("submittedAt", idea.getCreatedAt().toString());
+                    map.put("eventId", eventId);
+                    map.put("status", idea.getStatus().name());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public java.util.Map<String, Object> submitIdeaForEvent(Long eventId, java.util.Map<String, Object> ideaData, Long userId) {
@@ -226,20 +242,19 @@ public class EventService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        // Create idea object with all details
-        java.util.Map<String, Object> idea = new java.util.HashMap<>();
-        idea.put("id", System.currentTimeMillis()); // Simple ID generation
-        idea.put("title", ideaData.get("title"));
-        idea.put("description", ideaData.get("description"));
-        idea.put("expectedOutcome", ideaData.get("expectedOutcome"));
-        idea.put("submittedBy", user.getName());
-        idea.put("submittedByEmail", user.getEmail());
-        idea.put("submittedById", userId);
-        idea.put("submittedAt", LocalDateTime.now().toString());
-        idea.put("eventId", eventId);
+        // Create and save the idea
+        Idea idea = Idea.builder()
+                .title((String) ideaData.get("title"))
+                .description((String) ideaData.get("description"))
+                .expectedOutcome((String) ideaData.get("expectedOutcome"))
+                .status(Idea.IdeaStatus.SUBMITTED)
+                .problem(null) // Set to null or find appropriate problem if needed
+                .event(event)
+                .submittedBy(user)
+                .isActive(true)
+                .build();
         
-        // Store the idea
-        eventIdeas.computeIfAbsent(eventId, k -> new java.util.ArrayList<>()).add(idea);
+        Idea savedIdea = ideaRepository.save(idea);
         
         log.info("Idea submitted for event '{}' by user '{}': {}", 
                 event.getTitle(), user.getName(), ideaData.get("title"));
@@ -256,7 +271,8 @@ public class EventService {
         return java.util.Map.of(
             "message", "Idea submitted successfully",
             "eventId", eventId,
-            "ideaTitle", ideaData.get("title"),
+            "ideaId", savedIdea.getId(),
+            "ideaTitle", savedIdea.getTitle(),
             "submittedBy", user.getName(),
             "submittedAt", LocalDateTime.now().toString()
         );

@@ -26,27 +26,30 @@ const ViewIdeas = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
+        setError('');
+        
+        // Get current user info first
+        const currentUser = getCurrentUser();
+        setUser(currentUser);
+        
         // Fetch event details and ideas in parallel
         const [eventData, ideasData] = await Promise.all([
           eventApi.getEventById(eventId),
-          eventApi.getIdeasForEvent(eventId)
+          eventApi.getIdeasForEvent(eventId).catch(err => {
+            console.warn('Error fetching ideas, will try with empty array:', err);
+            return []; // Return empty array if there's an error
+          })
         ]);
         
         setEvent(eventData);
-        setIdeas(ideasData);
-        
-        // Get current user info
-        const currentUser = getCurrentUser();
-        if (!currentUser) {
-          throw new Error('User not authenticated');
-        }
-        setUser(currentUser);
-        
+        setIdeas(ideasData || []);
         setLoading(false);
+        
       } catch (err) {
-        setError('Failed to load event details or ideas');
+        console.error('Error in fetchData:', err);
+        setError('Failed to load event details. ' + (err.message || ''));
         setLoading(false);
-        console.error('Error fetching data:', err);
       }
     };
 
@@ -73,7 +76,7 @@ const ViewIdeas = () => {
     const newErrors = {};
     
     if (!formData.title.trim()) {
-      newErrors.title = 'Idea title is required';
+      newErrors.title = 'Title is required';
     } else if (formData.title.length > 200) {
       newErrors.title = 'Title cannot exceed 200 characters';
     }
@@ -101,35 +104,46 @@ const ViewIdeas = () => {
     }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    // Check if user is authenticated
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      setError('Please sign in to submit an idea');
+      // Optionally redirect to login
+      // navigate('/login', { state: { from: `/events/${eventId}` } });
+      return;
+    }
+    
+    // Validate form
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
     
     setSubmitting(true);
+    setError('');
     
     try {
-      const submissionData = {
+      await eventApi.submitIdea(eventId, {
         title: formData.title,
         description: formData.description,
         expectedOutcome: formData.expectedOutcome,
-        studentId: formData.studentId,
-        studentName: user?.name || '',
-        studentEmail: formData.studentEmail
-      };
+        // Use current user's info
+        studentId: currentUser.id,
+        studentEmail: currentUser.email
+      });
       
-      await eventApi.submitIdea(eventId, submissionData);
+      // Refresh ideas
+      const updatedIdeas = await eventApi.getIdeasForEvent(eventId).catch(() => []);
+      setIdeas(updatedIdeas || []);
       
-      // Refresh ideas list
-      const updatedIdeas = await eventApi.getIdeasForEvent(eventId);
-      setIdeas(updatedIdeas);
-      
-      // Reset form and hide it
+      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -138,11 +152,10 @@ const ViewIdeas = () => {
         studentEmail: ''
       });
       setShowSubmitForm(false);
-      setError('');
       
     } catch (err) {
-      setError('Failed to submit idea. Please try again.');
       console.error('Error submitting idea:', err);
+      setError(err.message || 'Failed to submit idea. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -188,59 +201,22 @@ const ViewIdeas = () => {
 
       {showSubmitForm && (
         <div className="submit-form-section">
-          <h2>Submit New Idea</h2>
-          
-          <div className="user-info">
-            <div className="form-group">
-              <label htmlFor="studentId">Student ID *</label>
-              <input
-                type="text"
-                id="studentId"
-                name="studentId"
-                value={formData.studentId}
-                onChange={handleChange}
-                required
-                placeholder="Enter your student ID"
-                className={errors.studentId ? 'error' : ''}
-              />
-              {errors.studentId && <span className="error-text">{errors.studentId}</span>}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="studentEmail">Official College Email *</label>
-              <input
-                type="email"
-                id="studentEmail"
-                name="studentEmail"
-                value={formData.studentEmail}
-                onChange={handleChange}
-                required
-                placeholder="Enter your college email"
-                className={errors.studentEmail ? 'error' : ''}
-              />
-              {errors.studentEmail && <span className="error-text">{errors.studentEmail}</span>}
-            </div>
-            
-            <p className="user-name"><strong>Name:</strong> {user?.name || 'Not available'}</p>
-          </div>
-          
+          <h2>Submit Your Idea</h2>
           <form onSubmit={handleSubmit} className="idea-form">
             <div className="form-group">
-              <label htmlFor="title">Idea Title *</label>
+              <label htmlFor="title">Title *</label>
               <input
                 type="text"
                 id="title"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                maxLength={200}
-                className={errors.title ? 'error' : ''}
-                placeholder="Enter a clear and concise title for your idea"
+                placeholder="Enter your idea title"
+                required
               />
               {errors.title && <span className="error-text">{errors.title}</span>}
-              <div className="character-count">{formData.title.length}/200</div>
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="description">Description *</label>
               <textarea
@@ -248,39 +224,27 @@ const ViewIdeas = () => {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                rows={6}
-                maxLength={2000}
-                className={errors.description ? 'error' : ''}
-                placeholder="Describe your idea in detail. What problem does it solve? How will it work?"
+                rows={4}
+                placeholder="Describe your idea in detail"
+                required
               />
               {errors.description && <span className="error-text">{errors.description}</span>}
-              <div className="character-count">{formData.description.length}/2000</div>
             </div>
-            
+
             <div className="form-group">
-              <label htmlFor="expectedOutcome">Expected Outcome / Advantage / Impact</label>
+              <label htmlFor="expectedOutcome">Expected Outcome (Optional)</label>
               <textarea
                 id="expectedOutcome"
                 name="expectedOutcome"
                 value={formData.expectedOutcome}
                 onChange={handleChange}
-                rows={4}
-                maxLength={1000}
-                className={errors.expectedOutcome ? 'error' : ''}
-                placeholder="What impact do you expect this idea to have? (Optional)"
+                rows={3}
+                placeholder="What do you hope to achieve with this idea?"
               />
               {errors.expectedOutcome && <span className="error-text">{errors.expectedOutcome}</span>}
-              <div className="character-count">{formData.expectedOutcome.length}/1000</div>
             </div>
-            
+
             <div className="form-actions">
-              <button 
-                type="button" 
-                className="btn btn-secondary"
-                onClick={() => setShowSubmitForm(false)}
-              >
-                Cancel
-              </button>
               <button 
                 type="submit" 
                 className="btn btn-primary"
@@ -299,36 +263,23 @@ const ViewIdeas = () => {
         {ideas.length === 0 ? (
           <div className="no-ideas">
             <p>No ideas have been submitted for this event yet.</p>
-            <p>Be the first to share your innovative idea!</p>
           </div>
         ) : (
           <div className="ideas-list">
             {ideas.map((idea, index) => (
               <div key={idea.id || index} className="idea-card">
                 <div className="idea-header">
-                  <h3 className="idea-title">{idea.title}</h3>
-                  <div className="idea-meta">
-                    <span className="submitted-by">By: {idea.submittedBy}</span>
-                    <span className="submitted-date">{formatDate(idea.submittedAt)}</span>
-                  </div>
+                  <h3>{idea.title}</h3>
+                  <span className="submitted-by">Submitted by: {idea.submittedBy}</span>
                 </div>
-                
-                <div className="idea-content">
-                  <div className="idea-description">
-                    <h4>Description:</h4>
-                    <p>{idea.description}</p>
+                <p className="idea-description">{idea.description}</p>
+                {idea.expectedOutcome && (
+                  <div className="expected-outcome">
+                    <strong>Expected Outcome:</strong> {idea.expectedOutcome}
                   </div>
-                  
-                  {idea.expectedOutcome && (
-                    <div className="idea-outcome">
-                      <h4>Expected Outcome:</h4>
-                      <p>{idea.expectedOutcome}</p>
-                    </div>
-                  )}
-                </div>
-                
+                )}
                 <div className="idea-footer">
-                  <span className="idea-number">Idea #{index + 1}</span>
+                  <span className="idea-date">{formatDate(idea.createdAt)}</span>
                 </div>
               </div>
             ))}

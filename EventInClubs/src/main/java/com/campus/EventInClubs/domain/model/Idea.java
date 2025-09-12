@@ -56,8 +56,12 @@ public class Idea {
     private IdeaStatus status = IdeaStatus.SUBMITTED;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "problem_id", nullable = false)
+    @JoinColumn(name = "problem_id")
     private Problem problem;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "submitted_by", nullable = false)

@@ -106,29 +106,16 @@ export default function ClubAdminDashboard() {
 
   const fetchIdeasForProposal = async (proposalId) => {
     try {
-      // Use real API to fetch ideas for the event/topic
-      const ideas = await ideaApi.getIdeasByProblem(proposalId);
-      
-      // Sort by upvotes (highest first)
-      const sortedIdeas = ideas.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
-      
-      // Calculate total votes for the proposal
-      const totalVotes = sortedIdeas.reduce((sum, idea) => sum + (idea.upvotes || 0), 0);
-      
-      // Update proposal votes count
-      setProposals(prev => prev.map(proposal => 
-        proposal.id === proposalId 
-          ? { ...proposal, votes: totalVotes }
-          : proposal
-      ));
+      // Use event API to fetch ideas for this event
+      const ideas = await eventApi.getIdeasForEvent(proposalId);
       
       setProposalIdeas(prev => ({
         ...prev,
-        [proposalId]: sortedIdeas
+        [proposalId]: Array.isArray(ideas) ? ideas : []
       }));
     } catch (error) {
-      console.error('Error fetching ideas for proposal:', error);
-      // Fallback to empty array if API fails
+      console.error(`Error fetching ideas for event ${proposalId}:`, error);
+      // Set empty array if there's an error
       setProposalIdeas(prev => ({
         ...prev,
         [proposalId]: []
@@ -138,14 +125,13 @@ export default function ClubAdminDashboard() {
 
   const toggleProposal = async (proposalId) => {
     const isExpanded = expandedProposals[proposalId];
-    
     setExpandedProposals(prev => ({
       ...prev,
       [proposalId]: !isExpanded
     }));
 
-    // Fetch ideas if expanding and not already loaded
-    if (!isExpanded && !proposalIdeas[proposalId]) {
+    // Always refresh ideas when expanding
+    if (!isExpanded) {
       await fetchIdeasForProposal(proposalId);
     }
   };
@@ -555,54 +541,46 @@ export default function ClubAdminDashboard() {
             )}
             
             {expandedProposals[proposal.id] && (
-              <div className="proposal-ideas-section">
-                <div className="ideas-header">
-                  <h4>💡 Student Ideas (Sorted by Upvotes)</h4>
-                  <span className="ideas-count">
-                    {proposalIdeas[proposal.id]?.length || 0} ideas
-                  </span>
-                </div>
-                
-                {proposalIdeas[proposal.id] ? (
-                  <div className="ideas-list">
-                    {proposalIdeas[proposal.id].map(idea => (
-                      <div key={idea.id} className="idea-card">
-                        <div className="idea-header">
-                          <div className="idea-title-section">
-                            <h5>{idea.title}</h5>
-                            <span className={`idea-status ${idea.status.toLowerCase()}`}>
-                              {idea.status}
-                            </span>
-                          </div>
-                          <div className="idea-votes">
-                            <span className="upvotes">👍 {idea.upvotes}</span>
-                            <span className="downvotes">👎 {idea.downvotes}</span>
-                          </div>
+              <div className="proposal-ideas">
+                <h4>Submitted Ideas ({proposalIdeas[proposal.id]?.length || 0})</h4>
+                {proposalIdeas[proposal.id]?.map((idea, idx) => (
+                  <div key={idea.id || idx} className="idea-item">
+                    <div className="idea-header">
+                      <h5>{idea.title || 'Untitled Idea'}</h5>
+                      <span className="submitted-by">
+                        Submitted by: {idea.submittedBy || 'Anonymous'}
+                        {idea.studentEmail ? ` (${idea.studentEmail})` : ''}
+                      </span>
+                    </div>
+                    <div className="idea-content">
+                      <p>{idea.description || 'No description provided.'}</p>
+                      {idea.expectedOutcome && (
+                        <div className="expected-outcome">
+                          <strong>Expected Outcome:</strong> {idea.expectedOutcome}
                         </div>
-                        <p className="idea-description">{idea.description}</p>
-                        <div className="idea-meta">
-                          <span className="idea-author">By: {idea.submittedByName}</span>
-                          <span className="idea-date">
-                            {new Date(idea.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="idea-actions">
-                          <button className="btn-success btn-sm">
-                            ✅ Approve
-                          </button>
-                          <button className="btn-warning btn-sm">
-                            📝 Review
-                          </button>
-                          <button className="btn-danger btn-sm">
-                            ❌ Reject
-                          </button>
-                        </div>
+                      )}
+                    </div>
+                    <div className="idea-footer">
+                      <span className="submission-date">
+                        Submitted on: {new Date(idea.createdAt || new Date()).toLocaleDateString()}
+                      </span>
+                      <div className="idea-actions">
+                        <button className="btn-success btn-sm">
+                          ✅ Approve
+                        </button>
+                        <button className="btn-warning btn-sm">
+                          📝 Review
+                        </button>
+                        <button className="btn-danger btn-sm">
+                          ❌ Reject
+                        </button>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="loading-ideas">
-                    <p>Loading ideas...</p>
+                ))}
+                {(!proposalIdeas[proposal.id] || proposalIdeas[proposal.id].length === 0) && (
+                  <div className="no-ideas">
+                    <p>No ideas have been submitted for this event yet.</p>
                   </div>
                 )}
               </div>
@@ -610,12 +588,10 @@ export default function ClubAdminDashboard() {
             
             <div className="proposal-actions">
               <button className="btn-success">
-                ✅
-                Approve
+                ✅ Approve
               </button>
               <button className="btn-danger">
-                ❌
-                Reject
+                ❌ Reject
               </button>
             </div>
           </div>
@@ -664,57 +640,74 @@ export default function ClubAdminDashboard() {
     <div className="club-admin-dashboard">
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
-          <h2>Club Administration Dashboard</h2>
+          <h2>Club Admin</h2>
         </div>
-        <nav className="sidebar-nav">
-          <button
+        <div className="sidebar-nav">
+          <button 
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
             <span className="nav-icon">📊</span>
-            Overview
+            <span>Overview</span>
           </button>
-          <button
+          <button 
             className={`nav-item ${activeTab === 'clubs' ? 'active' : ''}`}
             onClick={() => setActiveTab('clubs')}
           >
-            <span className="nav-icon">👥</span>
-            Club Management
+            <span className="nav-icon">🏛️</span>
+            <span>My Clubs</span>
           </button>
-          <button
-            className={`nav-item ${activeTab === 'events' ? 'active' : ''}`}
-            onClick={() => setActiveTab('events')}
-          >
-            <span className="nav-icon">📅</span>
-            Event Management
-          </button>
-          <button
+          <button 
             className={`nav-item ${activeTab === 'proposals' ? 'active' : ''}`}
             onClick={() => setActiveTab('proposals')}
           >
-            <span className="nav-icon">📄</span>
-            Proposals
+            <span className="nav-icon">📝</span>
+            <span>Event Proposals</span>
           </button>
-          <button
+          <button 
+            className={`nav-item ${activeTab === 'events' ? 'active' : ''}`}
+            onClick={() => setActiveTab('events')}
+          >
+            <span className="nav-icon">🎯</span>
+            <span>Topics for Ideas</span>
+          </button>
+          <button 
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
             <span className="nav-icon">📈</span>
-            Analytics
+            <span>Analytics</span>
           </button>
-        </nav>
+        </div>
       </div>
 
       <div className="dashboard-main">
         <div className="dashboard-header">
-          <h1>Club Administration Dashboard</h1>
+          <h1>{
+            activeTab === 'overview' ? 'Dashboard Overview' :
+            activeTab === 'clubs' ? 'My Clubs' :
+            activeTab === 'proposals' ? 'Event Proposals' :
+            activeTab === 'events' ? 'Topics for Ideas' : 'Analytics'
+          }</h1>
           <div className="header-actions">
-            <div className="notification-badge">
-              🔔
-              {notifications.length > 0 && (
-                <span className="badge">{notifications.length}</span>
-              )}
-            </div>
+            {activeTab === 'clubs' && (
+              <button 
+                className="btn-primary" 
+                onClick={() => setShowRegistrationModal(true)}
+              >
+                <span className="btn-icon">+</span>
+                Register New Club
+              </button>
+            )}
+            {activeTab === 'events' && (
+              <button 
+                className="btn-primary" 
+                onClick={handleCreateTopic}
+              >
+                <span className="btn-icon">+</span>
+                Create New Topic
+              </button>
+            )}
           </div>
         </div>
 

@@ -47,7 +47,26 @@ const GoogleSignIn = ({ onSuccess, onError, loading, setLoading }) => {
       setLoading(true);
       try {
         const res = await googleLogin(response.credential);
-        onSuccess(res.data);
+        
+        // Parse the JWT token to get user info
+        const token = res.data.token;
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        
+        // Create a complete user object
+        const userData = {
+          id: tokenPayload.userId || tokenPayload.sub,
+          email: tokenPayload.sub,
+          name: tokenPayload.name || tokenPayload.email?.split('@')[0] || 'Google User',
+          role: tokenPayload.role || 'user',
+          token: token
+        };
+        
+        // Pass the complete user data to the success handler
+        onSuccess({
+          ...res.data,
+          user: userData,
+          ...userData // Also include user data at the root level for backward compatibility
+        });
       } catch (error) {
         console.error('Google login error:', error);
         const errorMessage = error?.response?.data?.error || 'Google login failed. Please try again.';

@@ -180,26 +180,47 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSuccess = (data) => {
-    const { token, email, role } = data;
+  const handleGoogleSuccess = (response) => {
+    console.log('Google login successful:', response);
     
-    localStorage.setItem("token", token);
-    localStorage.setItem("email", email);
-    localStorage.setItem("role", role);
-    
-    if (rememberMe) {
-      localStorage.setItem("rememberMe", "true");
+    // Store token and user data in localStorage
+    if (response.token) {
+      localStorage.setItem('token', response.token);
     }
     
-    // Show success and redirect
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
+      console.log('User data stored in localStorage:', response.user);
+    } else if (response.email) {
+      // If user object is not provided but email is available
+      const userData = {
+        id: response.userId || response.email,
+        email: response.email,
+        name: response.name || response.email.split('@')[0],
+        role: response.role || 'user'
+      };
+      localStorage.setItem('user', JSON.stringify(userData));
+      console.log('User data created and stored:', userData);
+    } else {
+      console.warn('No user data received in Google login response');
+    }
+    
+    // Show success message
+    setErrors({});
+    
+    // Force a refresh of the auth state
+    window.dispatchEvent(new Event('storage'));
+    
+    // Redirect to home after a short delay
     setTimeout(() => {
-      // Redirect based on user role
-      if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
-        navigate("/admin/dashboard");
+      // Check if we need to redirect to a protected route
+      const from = new URLSearchParams(window.location.search).get('from');
+      if (from) {
+        navigate(from, { replace: true });
       } else {
         navigate("/");
       }
-    }, 1000);
+    }, 500);
   };
 
   const handleGoogleError = (errorMessage) => {

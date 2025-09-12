@@ -18,6 +18,8 @@ public interface IdeaRepository extends JpaRepository<Idea, Long> {
     List<Idea> findByIsActiveTrueOrderByCreatedAtDesc();
     List<Idea> findByProblemId(Long problemId);
     List<Idea> findByProblemIdAndIsActiveTrueOrderByCreatedAtDesc(Long problemId);
+    
+    List<Idea> findByEventIdAndIsActiveTrueOrderByCreatedAtDesc(Long eventId);
     List<Idea> findBySubmittedById(Long submittedById);
     List<Idea> findBySubmittedByIdAndIsActiveTrueOrderByCreatedAtDesc(Long submittedById);
     List<Idea> findByStatusAndIsActiveTrueOrderByCreatedAtDesc(String status);
