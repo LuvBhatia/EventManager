@@ -173,4 +173,60 @@ public class EventController {
         List<EventDto> events = eventService.getEventsAcceptingIdeas();
         return ResponseEntity.ok(events);
     }
+    
+    @GetMapping("/{eventId}/ideas")
+    public ResponseEntity<?> getIdeasForEvent(@PathVariable Long eventId) {
+        try {
+            log.info("Fetching ideas for event: {}", eventId);
+            
+            java.util.List<java.util.Map<String, Object>> ideas = eventService.getIdeasForEvent(eventId);
+            return ResponseEntity.ok(ideas);
+            
+        } catch (RuntimeException e) {
+            log.error("Error fetching ideas for event: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error fetching ideas for event", e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+
+    @PostMapping("/{eventId}/ideas")
+    public ResponseEntity<?> submitIdeaForEvent(
+            @PathVariable Long eventId,
+            @RequestBody java.util.Map<String, Object> ideaData,
+            @RequestParam Long userId) {
+        try {
+            log.info("Submitting idea for event: {} by user: {}", eventId, userId);
+            
+            // Validate required fields
+            String title = (String) ideaData.get("title");
+            String description = (String) ideaData.get("description");
+            
+            if (title == null || title.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(java.util.Map.of("error", "Idea title is required"));
+            }
+            
+            if (description == null || description.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(java.util.Map.of("error", "Idea description is required"));
+            }
+            
+            // Submit idea through event service
+            java.util.Map<String, Object> result = eventService.submitIdeaForEvent(eventId, ideaData, userId);
+            return ResponseEntity.ok(result);
+            
+        } catch (RuntimeException e) {
+            log.error("Error submitting idea for event: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error submitting idea for event", e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
 }

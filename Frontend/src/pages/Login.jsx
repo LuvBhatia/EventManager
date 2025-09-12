@@ -84,11 +84,79 @@ export default function Login() {
       
       // Regular user login
       const res = await loginUser(formData);
-      const { token, email, role } = res.data;
+      console.log('Full login response:', JSON.stringify(res, null, 2));
       
-      localStorage.setItem("token", token);
-      localStorage.setItem("email", email);
-      localStorage.setItem("role", role);
+      const { token, email, role } = res.data || {};
+      
+      if (!token || !email) {
+        throw new Error('Invalid login response: missing token or email');
+      }
+      
+      // Decode the JWT token to get user ID
+      let userIdFromToken = null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Decoded JWT payload:', payload);
+        
+        // The user ID is stored in the 'userId' claim
+        if (payload.userId) {
+          userIdFromToken = payload.userId.toString();
+          console.log('Found user ID in token:', userIdFromToken);
+        } else {
+          console.warn('No userId found in JWT payload');
+        }
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+      }
+      
+      // Use the ID from the token if available, otherwise fall back to email
+      const userIdValue = userIdFromToken || email.toLowerCase().trim();
+      
+      // Prepare user data with defaults
+      const userData = {
+        id: userIdValue,
+        email: email.toLowerCase().trim(),
+        name: email.split('@')[0],
+        role: role || 'USER'
+      };
+      
+      console.log('Prepared user data:', userData);
+      
+      if (!token || !email || !userIdValue) {
+        console.error('Missing required fields in login response:', { 
+          token: !!token, 
+          email: !!email, 
+          id: !!userIdValue,
+          responseData: res.data
+        });
+        throw new Error('Invalid login response from server');
+      }
+      
+      // Store all data in localStorage
+      try {
+        console.log('Storing authentication data in localStorage');
+        console.log('Token:', token ? 'Token received' : 'No token');
+        
+        // Store token first
+        localStorage.setItem("token", token);
+        
+        // Store complete user data
+        localStorage.setItem("user", JSON.stringify(userData));
+        
+        // For backward compatibility
+        localStorage.setItem("email", userData.email);
+        localStorage.setItem("role", userData.role);
+        
+        // Verify storage
+        console.log('Verifying storage:');
+        console.log('- Token exists:', !!localStorage.getItem('token'));
+        console.log('- User exists:', !!localStorage.getItem('user'));
+        console.log('- User data:', JSON.parse(localStorage.getItem('user') || '{}'));
+        
+      } catch (error) {
+        console.error('Error storing authentication data:', error);
+        throw new Error('Failed to store authentication data');
+      }
       
       if (rememberMe) {
         localStorage.setItem("rememberMe", "true");

@@ -197,6 +197,71 @@ public class EventService {
                 .collect(Collectors.toList());
     }
     
+    // In-memory storage for ideas (in a real app, this would be a database table)
+    private final java.util.Map<Long, java.util.List<java.util.Map<String, Object>>> eventIdeas = new java.util.concurrent.ConcurrentHashMap<>();
+    
+    public java.util.List<java.util.Map<String, Object>> getIdeasForEvent(Long eventId) {
+        // Verify event exists
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+        
+        return eventIdeas.getOrDefault(eventId, new java.util.ArrayList<>());
+    }
+
+    public java.util.Map<String, Object> submitIdeaForEvent(Long eventId, java.util.Map<String, Object> ideaData, Long userId) {
+        // Verify event exists and accepts ideas
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+        
+        if (!event.getAcceptsIdeas()) {
+            throw new RuntimeException("This event is not accepting ideas");
+        }
+        
+        // Check if idea submission deadline has passed
+        if (event.getIdeaSubmissionDeadline() != null && 
+            LocalDateTime.now().isAfter(event.getIdeaSubmissionDeadline())) {
+            throw new RuntimeException("Idea submission deadline has passed");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Create idea object with all details
+        java.util.Map<String, Object> idea = new java.util.HashMap<>();
+        idea.put("id", System.currentTimeMillis()); // Simple ID generation
+        idea.put("title", ideaData.get("title"));
+        idea.put("description", ideaData.get("description"));
+        idea.put("expectedOutcome", ideaData.get("expectedOutcome"));
+        idea.put("submittedBy", user.getName());
+        idea.put("submittedByEmail", user.getEmail());
+        idea.put("submittedById", userId);
+        idea.put("submittedAt", LocalDateTime.now().toString());
+        idea.put("eventId", eventId);
+        
+        // Store the idea
+        eventIdeas.computeIfAbsent(eventId, k -> new java.util.ArrayList<>()).add(idea);
+        
+        log.info("Idea submitted for event '{}' by user '{}': {}", 
+                event.getTitle(), user.getName(), ideaData.get("title"));
+        
+        // Send notification to event organizer
+        if (!event.getOrganizer().getId().equals(userId)) {
+            notificationService.notifyNewEventIdea(
+                event.getOrganizer().getId(), 
+                (String) ideaData.get("title"), 
+                eventId
+            );
+        }
+        
+        return java.util.Map.of(
+            "message", "Idea submitted successfully",
+            "eventId", eventId,
+            "ideaTitle", ideaData.get("title"),
+            "submittedBy", user.getName(),
+            "submittedAt", LocalDateTime.now().toString()
+        );
+    }
+
     private EventDto convertToDto(Event event) {
         return EventDto.builder()
                 .id(event.getId())

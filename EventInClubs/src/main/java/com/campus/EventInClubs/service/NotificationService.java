@@ -144,14 +144,25 @@ public class NotificationService {
         );
     }
     
-    public void notifyIdeaStatusChanged(Long ideaOwnerId, String newStatus, Long ideaId) {
+    public void notifyIdeaStatusChanged(Long userId, String newStatus, Long ideaId) {
         createNotification(
-            ideaOwnerId,
+            userId,
             "Idea Status Updated",
             "Your idea status has been changed to " + newStatus + ".",
             Notification.NotificationType.IDEA_STATUS_CHANGED,
             ideaId,
             "IDEA"
+        );
+    }
+    
+    public void notifyNewEventIdea(Long userId, String ideaTitle, Long eventId) {
+        createNotification(
+            userId,
+            "New Event Idea Submitted",
+            "A new idea '" + ideaTitle + "' has been submitted for your event.",
+            Notification.NotificationType.NEW_IDEA,
+            eventId,
+            "EVENT"
         );
     }
     
