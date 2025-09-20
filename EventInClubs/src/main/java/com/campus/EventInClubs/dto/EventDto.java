@@ -39,6 +39,10 @@ public class EventDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
+    // Deadline status fields
+    private Boolean isExpired;
+    private Boolean isViewOnly;
+    
     // Helper method to check if registration is open
     public boolean isRegistrationOpen() {
         return status == Event.EventStatus.PUBLISHED && 

@@ -21,6 +21,9 @@ public class ProblemDto {
     private Long postedById;
     private String postedByName;
     private Boolean isActive;
+    private Instant deadline;
+    private Boolean isExpired;
+    private Boolean isViewOnly; // deadline passed but not yet removed
     private Instant createdAt;
     private Instant updatedAt;
 }

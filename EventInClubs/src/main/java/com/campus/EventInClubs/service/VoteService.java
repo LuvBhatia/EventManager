@@ -29,8 +29,8 @@ public class VoteService {
     
     public Map<String, Object> voteOnIdea(Long ideaId, Long userId, String voteType) {
         // Validate vote type
-        if (!voteType.equals("UPVOTE") && !voteType.equals("DOWNVOTE")) {
-            throw new RuntimeException("Vote type must be UPVOTE or DOWNVOTE");
+        if (!voteType.equals("UP") && !voteType.equals("DOWN")) {
+            throw new RuntimeException("Vote type must be UP or DOWN");
         }
         
         // Verify idea exists and is active
@@ -94,7 +94,7 @@ public class VoteService {
             // Send notification to idea owner (if not voting on own idea)
             if (!idea.getSubmittedBy().getId().equals(userId)) {
                 notificationService.notifyIdeaVoted(idea.getSubmittedBy().getId(), user.getName(), 
-                    voteType.equals("UPVOTE") ? "UP" : "DOWN", ideaId);
+                    voteType, ideaId);
             }
             
             // Check for voting achievements
@@ -115,8 +115,8 @@ public class VoteService {
         Idea idea = ideaRepository.findById(ideaId)
                 .orElseThrow(() -> new RuntimeException("Idea not found"));
         // Calculate vote counts
-        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "UP");
-        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "DOWN");
+        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), com.campus.EventInClubs.domain.model.Vote.VoteType.UP);
+        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), com.campus.EventInClubs.domain.model.Vote.VoteType.DOWN);
         long totalVotes = upvotes + downvotes;
         
         return Map.of(

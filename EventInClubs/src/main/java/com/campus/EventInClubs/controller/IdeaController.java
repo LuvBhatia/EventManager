@@ -117,6 +117,8 @@ public class IdeaController {
                                      @RequestParam Long problemId, 
                                      @RequestParam Long userId) {
         try {
+            log.info("Creating idea for problemId: {}, userId: {}, title: {}", problemId, userId, ideaDto.getTitle());
+            
             if (ideaDto.getTitle() == null || ideaDto.getTitle().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Idea title is required"));
@@ -125,11 +127,11 @@ public class IdeaController {
             IdeaDto createdIdea = ideaService.createIdea(ideaDto, problemId, userId);
             return ResponseEntity.ok(createdIdea);
         } catch (RuntimeException e) {
-            log.error("Error creating idea: {}", e.getMessage());
+            log.error("Error creating idea for problemId: {}, userId: {}: {}", problemId, userId, e.getMessage());
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            log.error("Error creating idea", e);
+            log.error("Error creating idea for problemId: {}, userId: {}", problemId, userId, e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Internal server error"));
         }

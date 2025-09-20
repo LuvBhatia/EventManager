@@ -59,4 +59,8 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
            "(SELECT COUNT(i) FROM Idea i WHERE i.problem.id = p.id AND i.isActive = true) DESC, " +
            "p.createdAt DESC")
     List<Problem> findTrendingProblems();
+    
+    // Find problems that are expired (deadline + 1 hour has passed)
+    @Query("SELECT p FROM Problem p WHERE p.isActive = true AND p.deadline IS NOT NULL AND p.deadline < :oneHourAgo")
+    List<Problem> findExpiredProblems(@Param("oneHourAgo") Instant oneHourAgo);
 }

@@ -199,7 +199,7 @@ public class EventController {
             @RequestBody java.util.Map<String, Object> ideaData,
             @RequestParam Long userId) {
         try {
-            log.info("Submitting idea for event: {} by user: {}", eventId, userId);
+            log.info("Submitting idea for event: {} by user: {}, title: {}", eventId, userId, ideaData.get("title"));
             
             // Validate required fields
             String title = (String) ideaData.get("title");
@@ -220,11 +220,32 @@ public class EventController {
             return ResponseEntity.ok(result);
             
         } catch (RuntimeException e) {
-            log.error("Error submitting idea for event: {}", e.getMessage());
+            log.error("Error submitting idea for event: {} by user: {}: {}", eventId, userId, e.getMessage());
             return ResponseEntity.badRequest()
                     .body(java.util.Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            log.error("Error submitting idea for event", e);
+            log.error("Error submitting idea for event: {} by user: {}", eventId, userId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @GetMapping("/{eventId}/ideas/status")
+    public ResponseEntity<?> getUserIdeaSubmissionStatus(
+            @PathVariable Long eventId,
+            @RequestParam Long userId) {
+        try {
+            log.info("Checking idea submission status for event: {} and user: {}", eventId, userId);
+            
+            java.util.Map<String, Object> status = eventService.getUserIdeaSubmissionStatus(eventId, userId);
+            return ResponseEntity.ok(status);
+            
+        } catch (RuntimeException e) {
+            log.error("Error checking idea submission status: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error checking idea submission status for event: {} and user: {}", eventId, userId, e);
             return ResponseEntity.internalServerError()
                     .body(java.util.Map.of("error", "Internal server error"));
         }

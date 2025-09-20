@@ -69,5 +69,8 @@ public interface IdeaRepository extends JpaRepository<Idea, Long> {
     
     // Additional methods for achievement service
     Long countBySubmittedByIdAndIsActiveTrue(Long submittedById);
-    Long countBySubmittedByIdAndStatusAndIsActiveTrue(Long submittedById, String status);
+    Long countBySubmittedByIdAndStatusAndIsActiveTrue(Long submittedById, IdeaStatus status);
+    
+    // Method to count ideas by user and event (for limiting submissions)
+    Long countByEventIdAndSubmittedByIdAndIsActiveTrue(Long eventId, Long submittedById);
 }

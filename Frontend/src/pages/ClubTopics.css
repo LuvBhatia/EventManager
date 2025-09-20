@@ -340,13 +340,13 @@
 
 .detail-label {
   font-weight: 600;
-  color: #e0e7ff;
+  /* color: #e0e7ff; */
   min-width: 180px;
   flex-shrink: 0;
 }
 
 .detail-value {
-  color: #fff;
+  /* color: #fff; */
   flex: 1;
 }
 

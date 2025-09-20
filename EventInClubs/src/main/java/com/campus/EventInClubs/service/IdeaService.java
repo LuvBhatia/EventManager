@@ -94,6 +94,11 @@ public class IdeaService {
             throw new RuntimeException("Cannot submit ideas for inactive problems");
         }
         
+        // Check if deadline has passed
+        if (problem.getDeadline() != null && Instant.now().isAfter(problem.getDeadline())) {
+            throw new RuntimeException("Cannot submit ideas after the deadline has passed");
+        }
+        
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
@@ -210,8 +215,8 @@ public class IdeaService {
     
     private IdeaDto convertToDto(Idea idea) {
         // Calculate vote counts
-        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "UP");
-        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), "DOWN");
+        long upvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), com.campus.EventInClubs.domain.model.Vote.VoteType.UP);
+        long downvotes = voteRepository.countByIdeaIdAndVoteType(idea.getId(), com.campus.EventInClubs.domain.model.Vote.VoteType.DOWN);
         
         return IdeaDto.builder()
                 .id(idea.getId())

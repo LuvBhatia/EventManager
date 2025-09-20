@@ -54,12 +54,15 @@ const GoogleSignIn = ({ onSuccess, onError, loading, setLoading }) => {
         
         // Create a complete user object
         const userData = {
-          id: tokenPayload.userId || tokenPayload.sub,
-          email: tokenPayload.sub,
-          name: tokenPayload.name || tokenPayload.email?.split('@')[0] || 'Google User',
-          role: tokenPayload.role || 'user',
+          id: tokenPayload.userId,
+          email: tokenPayload.sub, // sub contains the email in our JWT
+          name: res.data.email?.split('@')[0] || tokenPayload.sub?.split('@')[0] || 'Google User',
+          role: tokenPayload.role || res.data.role || 'STUDENT',
           token: token
         };
+        
+        console.log('Google login - JWT payload:', tokenPayload);
+        console.log('Google login - User data created:', userData);
         
         // Pass the complete user data to the success handler
         onSuccess({

@@ -55,5 +55,10 @@ public interface EventRepository extends JpaRepository<Event, Long> {
            "(e.ideaSubmissionDeadline IS NULL OR e.ideaSubmissionDeadline > :now)")
     List<Event> findEventsAcceptingIdeas(@Param("now") LocalDateTime now);
     
+    @Query("SELECT e FROM Event e WHERE e.ideaSubmissionDeadline IS NOT NULL AND " +
+           "e.ideaSubmissionDeadline < :oneHourAgo AND e.isActive = true AND " +
+           "e.status IN ('PUBLISHED', 'REGISTRATION_CLOSED', 'ONGOING')")
+    List<Event> findExpiredEvents(@Param("oneHourAgo") LocalDateTime oneHourAgo);
+    
     long countByIsActiveTrue();
 }

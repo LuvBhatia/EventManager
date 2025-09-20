@@ -60,6 +60,7 @@ export default function Navbar() {
           {!isAdmin && !isSuperAdmin && <Link to="/">Home</Link>}
           {token && !isAdmin && !isSuperAdmin && <Link to="/clubs">Clubs</Link>}
           {token && !isAdmin && !isSuperAdmin && <Link to="/topics">Club Topics</Link>}
+          {token && !isAdmin && !isSuperAdmin && <Link to="/leaderboard">🏆 Leaderboard</Link>}
           {!isAuthenticated ? (
             <>
               <Link to="/login">Login</Link>

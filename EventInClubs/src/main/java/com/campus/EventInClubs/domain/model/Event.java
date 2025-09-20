@@ -78,6 +78,9 @@ public class Event {
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<EventRegistration> registrations;
     
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Idea> ideas;
+    
     @Column(name = "tags")
     private String tags; // Comma-separated tags
     

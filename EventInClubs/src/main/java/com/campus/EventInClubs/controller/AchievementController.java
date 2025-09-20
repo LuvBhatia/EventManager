@@ -62,4 +62,15 @@ public class AchievementController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/leaderboard")
+    public ResponseEntity<List<Map<String, Object>>> getLeaderboard(
+            @RequestParam(defaultValue = "50") int limit) {
+        try {
+            List<Map<String, Object>> leaderboard = achievementService.getLeaderboard(limit);
+            return ResponseEntity.ok(leaderboard);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(List.of(Map.of("error", e.getMessage())));
+        }
+    }
 }

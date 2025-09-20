@@ -26,4 +26,11 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
     
     @Query("SELECT COUNT(ua) FROM UserAchievement ua WHERE ua.user.id = :userId")
     long countAchievementsByUserId(@Param("userId") Long userId);
+    
+    @Query("SELECT u, COALESCE(SUM(ua.pointsEarned), 0) as totalPoints, COUNT(ua) as achievementCount " +
+           "FROM User u LEFT JOIN UserAchievement ua ON u.id = ua.user.id " +
+           "GROUP BY u.id, u.name, u.email " +
+           "ORDER BY totalPoints DESC, achievementCount DESC " +
+           "LIMIT :limit")
+    List<Object[]> getLeaderboardData(@Param("limit") int limit);
 }

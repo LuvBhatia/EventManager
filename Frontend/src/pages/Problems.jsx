@@ -211,13 +211,41 @@ export default function Problems() {
               </div>
             </div>
 
+            {/* Deadline Status */}
+            {problem.deadline && (
+              <div className="deadline-status">
+                {problem.isExpired ? (
+                  <div className="deadline-expired">
+                    <span className="status-icon">⏰</span>
+                    <span>Topic Expired</span>
+                  </div>
+                ) : problem.isViewOnly ? (
+                  <div className="deadline-view-only">
+                    <span className="status-icon">👁️</span>
+                    <span>View Only - Deadline Passed</span>
+                  </div>
+                ) : (
+                  <div className="deadline-active">
+                    <span className="status-icon">⏳</span>
+                    <span>Deadline: {new Date(problem.deadline).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="problem-actions">
               <button className="btn-primary">
                 View Ideas ({problem.ideaCount || 0})
               </button>
-              <button className="btn-secondary">
-                Submit Idea
-              </button>
+              {!problem.isExpired && (
+                <button 
+                  className={`btn-secondary ${problem.isViewOnly ? 'disabled' : ''}`}
+                  disabled={problem.isViewOnly}
+                  title={problem.isViewOnly ? 'Deadline has passed - submissions closed' : 'Submit your idea'}
+                >
+                  {problem.isViewOnly ? 'Submissions Closed' : 'Submit Idea'}
+                </button>
+              )}
             </div>
           </div>
         ))}

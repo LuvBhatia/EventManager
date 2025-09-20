@@ -31,6 +31,7 @@ public class ProblemService {
         List<Problem> problems = problemRepository.findByIsActiveTrueOrderByCreatedAtDesc();
         return problems.stream()
                 .map(this::convertToDto)
+                .filter(problemDto -> !problemDto.getIsExpired()) // Filter out expired problems
                 .collect(Collectors.toList());
     }
     
@@ -38,6 +39,7 @@ public class ProblemService {
         List<Problem> problems = problemRepository.findByClubIdAndIsActiveTrueOrderByCreatedAtDesc(clubId);
         return problems.stream()
                 .map(this::convertToDto)
+                .filter(problemDto -> !problemDto.getIsExpired()) // Filter out expired problems
                 .collect(Collectors.toList());
     }
     
@@ -45,6 +47,7 @@ public class ProblemService {
         List<Problem> problems = problemRepository.findTrendingProblems();
         return problems.stream()
                 .map(this::convertToDto)
+                .filter(problemDto -> !problemDto.getIsExpired()) // Filter out expired problems
                 .collect(Collectors.toList());
     }
     
@@ -52,6 +55,7 @@ public class ProblemService {
         List<Problem> problems = problemRepository.findByCategoryAndIsActiveTrueOrderByCreatedAtDesc(category);
         return problems.stream()
                 .map(this::convertToDto)
+                .filter(problemDto -> !problemDto.getIsExpired()) // Filter out expired problems
                 .collect(Collectors.toList());
     }
     
@@ -59,6 +63,7 @@ public class ProblemService {
         List<Problem> problems = problemRepository.searchActiveProblems(searchTerm);
         return problems.stream()
                 .map(this::convertToDto)
+                .filter(problemDto -> !problemDto.getIsExpired()) // Filter out expired problems
                 .collect(Collectors.toList());
     }
     
@@ -75,14 +80,12 @@ public class ProblemService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        // Check if user is club admin or super admin
-        if (!user.getRole().name().equals("CLUB_ADMIN") && !user.getRole().name().equals("SUPER_ADMIN")) {
-            throw new RuntimeException("Only club admins can post problems");
-        }
+        // Check if user is admin of this specific club or super admin
+        boolean isSuperAdmin = user.getRole().name().equals("SUPER_ADMIN");
+        boolean isClubAdmin = club.getAdminUser().getId().equals(userId);
         
-        // Check if user is admin of this specific club
-        if (!club.getAdminUser().getId().equals(userId) && !user.getRole().name().equals("SUPER_ADMIN")) {
-            throw new RuntimeException("You can only post problems for your own club");
+        if (!isSuperAdmin && !isClubAdmin) {
+            throw new RuntimeException("Only club admins can post problems for their clubs");
         }
         
         Problem problem = Problem.builder()
@@ -90,6 +93,7 @@ public class ProblemService {
                 .description(problemDto.getDescription())
                 .category(problemDto.getCategory())
                 .priority(problemDto.getPriority())
+                .deadline(problemDto.getDeadline())
                 .club(club)
                 .postedBy(user)
                 .isActive(true)
@@ -146,6 +150,18 @@ public class ProblemService {
     }
     
     private ProblemDto convertToDto(Problem problem) {
+        // Calculate deadline status
+        boolean isExpired = false;
+        boolean isViewOnly = false;
+        
+        if (problem.getDeadline() != null) {
+            Instant now = Instant.now();
+            Instant oneHourAfterDeadline = problem.getDeadline().plusSeconds(3600); // 1 hour = 3600 seconds
+            
+            isExpired = now.isAfter(oneHourAfterDeadline);
+            isViewOnly = now.isAfter(problem.getDeadline()) && now.isBefore(oneHourAfterDeadline);
+        }
+        
         return ProblemDto.builder()
                 .id(problem.getId())
                 .title(problem.getTitle())
@@ -157,6 +173,9 @@ public class ProblemService {
                 .postedById(problem.getPostedBy().getId())
                 .postedByName(problem.getPostedBy().getName())
                 .isActive(problem.getIsActive())
+                .deadline(problem.getDeadline())
+                .isExpired(isExpired)
+                .isViewOnly(isViewOnly)
                 .createdAt(problem.getCreatedAt())
                 .updatedAt(problem.getUpdatedAt())
                 .build();

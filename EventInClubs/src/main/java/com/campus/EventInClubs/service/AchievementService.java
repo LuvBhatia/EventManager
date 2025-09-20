@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -92,9 +93,9 @@ public class AchievementService {
     
     private void checkImplementationAchievements(User user) {
         long implementedCount = ideaRepository.countBySubmittedByIdAndStatusAndIsActiveTrue(
-                user.getId(), "IMPLEMENTING") + 
+                user.getId(), com.campus.EventInClubs.domain.model.Idea.IdeaStatus.IMPLEMENTING) + 
                 ideaRepository.countBySubmittedByIdAndStatusAndIsActiveTrue(
-                user.getId(), "COMPLETED");
+                user.getId(), com.campus.EventInClubs.domain.model.Idea.IdeaStatus.COMPLETED);
         
         // Problem solver achievements
         checkLeveledAchievement(user, UserAchievement.AchievementType.PROBLEM_SOLVER, implementedCount,
@@ -192,5 +193,52 @@ public class AchievementService {
                 .title(getAchievementTitle(achievement.getAchievementType(), achievement.getLevel()))
                 .earnedAt(achievement.getEarnedAt())
                 .build();
+    }
+    
+    public List<Map<String, Object>> getLeaderboard(int limit) {
+        // Get users with their total points and achievement counts
+        List<Object[]> leaderboardData = achievementRepository.getLeaderboardData(limit);
+        
+        return leaderboardData.stream()
+                .map(row -> {
+                    User user = (User) row[0];
+                    Long totalPoints = (Long) row[1];
+                    Long achievementCount = (Long) row[2];
+                    
+                    // Calculate user level based on points
+                    String level = calculateUserLevel(totalPoints != null ? totalPoints : 0L);
+                    
+                    Map<String, Object> userStats = new java.util.HashMap<>();
+                    userStats.put("userId", user.getId());
+                    userStats.put("name", user.getName());
+                    userStats.put("email", user.getEmail());
+                    userStats.put("totalPoints", totalPoints != null ? totalPoints : 0L);
+                    userStats.put("achievementCount", achievementCount != null ? achievementCount : 0L);
+                    userStats.put("level", level);
+                    userStats.put("trophy", getTrophyForLevel(level));
+                    
+                    return userStats;
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    private String calculateUserLevel(Long points) {
+        if (points >= 1000) return "Diamond";
+        if (points >= 500) return "Platinum";
+        if (points >= 250) return "Gold";
+        if (points >= 100) return "Silver";
+        if (points >= 25) return "Bronze";
+        return "Beginner";
+    }
+    
+    private String getTrophyForLevel(String level) {
+        return switch (level) {
+            case "Diamond" -> "💎";
+            case "Platinum" -> "🏆";
+            case "Gold" -> "🥇";
+            case "Silver" -> "🥈";
+            case "Bronze" -> "🥉";
+            default -> "🏅";
+        };
     }
 }

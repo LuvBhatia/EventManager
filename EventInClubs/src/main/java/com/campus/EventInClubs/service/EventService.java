@@ -29,9 +29,11 @@ public class EventService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final IdeaRepository ideaRepository;
+    private final EventCleanupService eventCleanupService;
     
     public List<EventDto> getAllEvents() {
         return eventRepository.findAll().stream()
+                .filter(event -> event.getIsActive() != null && event.getIsActive()) // Only show active events
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -242,6 +244,12 @@ public class EventService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
+        // Check if user has already submitted 2 ideas for this event
+        Long existingIdeasCount = ideaRepository.countByEventIdAndSubmittedByIdAndIsActiveTrue(eventId, userId);
+        if (existingIdeasCount >= 2) {
+            throw new RuntimeException("You can only submit a maximum of 2 ideas per event. You have already submitted " + existingIdeasCount + " ideas for this event.");
+        }
+        
         // Create and save the idea
         Idea idea = Idea.builder()
                 .title((String) ideaData.get("title"))
@@ -278,6 +286,25 @@ public class EventService {
         );
     }
 
+    public java.util.Map<String, Object> getUserIdeaSubmissionStatus(Long eventId, Long userId) {
+        // Verify event exists
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+        
+        // Count existing ideas by user for this event
+        Long existingIdeasCount = ideaRepository.countByEventIdAndSubmittedByIdAndIsActiveTrue(eventId, userId);
+        Long remainingSubmissions = Math.max(0, 2 - existingIdeasCount);
+        
+        return java.util.Map.of(
+            "eventId", eventId,
+            "userId", userId,
+            "submittedIdeas", existingIdeasCount,
+            "remainingSubmissions", remainingSubmissions,
+            "maxIdeasPerEvent", 2,
+            "canSubmitMore", remainingSubmissions > 0
+        );
+    }
+    
     private EventDto convertToDto(Event event) {
         return EventDto.builder()
                 .id(event.getId())
@@ -303,6 +330,8 @@ public class EventService {
                 .externalLink(event.getExternalLink())
                 .createdAt(event.getCreatedAt())
                 .updatedAt(event.getUpdatedAt())
+                .isExpired(eventCleanupService.isEventExpired(event))
+                .isViewOnly(eventCleanupService.isEventInViewOnlyMode(event))
                 .build();
     }
 }

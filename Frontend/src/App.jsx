@@ -10,6 +10,7 @@ import ClubTopics from "./pages/ClubTopics";
 import ClubAdminDashboard from './pages/ClubAdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ViewIdeas from "./pages/ViewIdeas";
+import Leaderboard from "./pages/Leaderboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
 import AchievementBadge from "./components/AchievementBadge";
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/clubs" element={<ProtectedRoute><Clubs /></ProtectedRoute>} />
         <Route path="/topics" element={<ProtectedRoute><ClubTopics /></ProtectedRoute>} />
+        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/events/:eventId/ideas" element={<ProtectedRoute><ViewIdeas /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<ProtectedRoute><ClubAdminDashboard /></ProtectedRoute>} />
         <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
