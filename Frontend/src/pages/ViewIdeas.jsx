@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventApi } from '../api/event';
 import { voteApi } from '../api/vote';
-import { getCurrentUser } from '../services/authService';
+import { getCurrentUser, hasAnyRole } from '../services/authService';
 import '../styles/ViewIdeas.css';
 
 const ViewIdeas = () => {
@@ -29,6 +29,7 @@ const ViewIdeas = () => {
   const [userVotes, setUserVotes] = useState({});
   const [votingLoading, setVotingLoading] = useState({});
   const [sortBy, setSortBy] = useState('popular'); // popular, newest, oldest
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +40,10 @@ const ViewIdeas = () => {
         // Get current user info first
         const currentUser = getCurrentUser();
         setUser(currentUser);
+        
+        // Check if user is admin
+        const adminStatus = hasAnyRole(['ADMIN', 'CLUB_ADMIN', 'SUPER_ADMIN']);
+        setIsAdmin(adminStatus);
         
         // Auto-populate form with user data
         if (currentUser) {
@@ -150,6 +155,20 @@ const ViewIdeas = () => {
   const closeIdeaModal = () => {
     setShowIdeaModal(false);
     setSelectedIdea(null);
+  };
+
+  const handleBackToEvent = () => {
+    // Navigate based on user role
+    console.log('Back to Event clicked - User is admin:', isAdmin);
+    if (isAdmin) {
+      // Admin users go to Club Admin Dashboard's Event Proposals tab
+      console.log('Navigating to admin dashboard');
+      navigate('/admin/dashboard?tab=proposals');
+    } else {
+      // Regular users (students) go to Topics page
+      console.log('Navigating to topics page');
+      navigate('/topics');
+    }
   };
 
   const sortIdeas = (ideasToSort) => {
@@ -387,15 +406,17 @@ const ViewIdeas = () => {
       <div className="header">
         <h1>Ideas for: {event?.title}</h1>
         <div className="header-actions">
-          <button 
-            className="btn btn-primary"
-            onClick={() => setShowSubmitForm(!showSubmitForm)}
-          >
-            {showSubmitForm ? 'Cancel' : 'Submit New Idea'}
-          </button>
+          {!isAdmin && (
+            <button 
+              className="btn btn-primary"
+              onClick={() => setShowSubmitForm(!showSubmitForm)}
+            >
+              {showSubmitForm ? 'Cancel' : 'Submit New Idea'}
+            </button>
+          )}
           <button 
             className="btn btn-secondary"
-            onClick={() => navigate(`/events/${eventId}`)}
+            onClick={handleBackToEvent}
           >
             Back to Event
           </button>
@@ -404,7 +425,7 @@ const ViewIdeas = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      {showSubmitForm && (
+      {showSubmitForm && !isAdmin && (
         <div className="submit-form-section">
           <h2>Submit Your Idea</h2>
           <form onSubmit={handleSubmit} className="idea-form">
@@ -538,37 +559,61 @@ const ViewIdeas = () => {
                     <span className="idea-date">{formatDate(idea.submittedAt || idea.createdAt)}</span>
                     
                     <div className="vote-section">
-                      <button
-                        className={`vote-btn upvote ${userVote?.voteType === 'UP' ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleVote(idea.id, 'UP');
-                        }}
-                        disabled={isVotingLoading}
-                        title="Upvote this idea"
-                      >
-                        👍 {stats.upvotes}
-                      </button>
-                      
-                      <button
-                        className={`vote-btn downvote ${userVote?.voteType === 'DOWN' ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleVote(idea.id, 'DOWN');
-                        }}
-                        disabled={isVotingLoading}
-                        title="Downvote this idea"
-                      >
-                        👎 {stats.downvotes}
-                      </button>
-                      
-                      <button
-                        className="view-details-btn"
-                        onClick={() => handleIdeaClick(idea)}
-                        title="View full details"
-                      >
-                        📄 Details
-                      </button>
+                      {isAdmin ? (
+                        // Admin view - show vote counts without voting buttons
+                        <>
+                          <div className="vote-display">
+                            <span className="vote-count upvote-count">
+                              👍 {stats.upvotes}
+                            </span>
+                            <span className="vote-count downvote-count">
+                              👎 {stats.downvotes}
+                            </span>
+                          </div>
+                          <button
+                            className="view-details-btn"
+                            onClick={() => handleIdeaClick(idea)}
+                            title="View full details"
+                          >
+                            📄 Details
+                          </button>
+                        </>
+                      ) : (
+                        // Regular user view - show voting buttons
+                        <>
+                          <button
+                            className={`vote-btn upvote ${userVote?.voteType === 'UP' ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVote(idea.id, 'UP');
+                            }}
+                            disabled={isVotingLoading}
+                            title="Upvote this idea"
+                          >
+                            👍 {stats.upvotes}
+                          </button>
+                          
+                          <button
+                            className={`vote-btn downvote ${userVote?.voteType === 'DOWN' ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVote(idea.id, 'DOWN');
+                            }}
+                            disabled={isVotingLoading}
+                            title="Downvote this idea"
+                          >
+                            👎 {stats.downvotes}
+                          </button>
+                          
+                          <button
+                            className="view-details-btn"
+                            onClick={() => handleIdeaClick(idea)}
+                            title="View full details"
+                          >
+                            📄 Details
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -686,45 +731,85 @@ const ViewIdeas = () => {
               <div className="voting-section">
                 <div className="section-header">
                   <span className="section-icon">🗳️</span>
-                  <h3>Cast Your Vote</h3>
+                  <h3>{isAdmin ? 'Vote Statistics' : 'Cast Your Vote'}</h3>
                 </div>
                 <div className="voting-content">
-                  <p className="voting-prompt">What do you think about this idea?</p>
-                  <div className="vote-buttons enhanced">
-                    <button
-                      className={`vote-btn upvote enhanced ${userVotes[selectedIdea.id]?.voteType === 'UP' ? 'active' : ''}`}
-                      onClick={() => handleVote(selectedIdea.id, 'UP')}
-                      disabled={votingLoading[selectedIdea.id]}
-                    >
-                      <span className="vote-emoji">👍</span>
-                      <span className="vote-text">
-                        <strong>Upvote</strong>
-                        <small>I like this idea</small>
-                      </span>
-                      <span className="vote-count-badge">{(voteStats[selectedIdea.id] || {}).upvotes || 0}</span>
-                    </button>
-                    
-                    <button
-                      className={`vote-btn downvote enhanced ${userVotes[selectedIdea.id]?.voteType === 'DOWN' ? 'active' : ''}`}
-                      onClick={() => handleVote(selectedIdea.id, 'DOWN')}
-                      disabled={votingLoading[selectedIdea.id]}
-                    >
-                      <span className="vote-emoji">👎</span>
-                      <span className="vote-text">
-                        <strong>Downvote</strong>
-                        <small>Needs improvement</small>
-                      </span>
-                      <span className="vote-count-badge">{(voteStats[selectedIdea.id] || {}).downvotes || 0}</span>
-                    </button>
-                  </div>
-                  
-                  {userVotes[selectedIdea.id] && (
-                    <div className="user-vote-status">
-                      <span className="status-icon">
-                        {userVotes[selectedIdea.id].voteType === 'UP' ? '✅' : '❌'}
-                      </span>
-                      You {userVotes[selectedIdea.id].voteType === 'UP' ? 'upvoted' : 'downvoted'} this idea
+                  {isAdmin ? (
+                    // Admin view - show vote statistics only
+                    <div className="admin-vote-stats">
+                      <p className="voting-prompt">Vote statistics for this idea:</p>
+                      <div className="vote-stats-display">
+                        <div className="stat-item upvote-stat">
+                          <span className="vote-emoji">👍</span>
+                          <span className="vote-text">
+                            <strong>Upvotes</strong>
+                            <small>People who like this idea</small>
+                          </span>
+                          <span className="vote-count-badge">{(voteStats[selectedIdea.id] || {}).upvotes || 0}</span>
+                        </div>
+                        
+                        <div className="stat-item downvote-stat">
+                          <span className="vote-emoji">👎</span>
+                          <span className="vote-text">
+                            <strong>Downvotes</strong>
+                            <small>People who think it needs improvement</small>
+                          </span>
+                          <span className="vote-count-badge">{(voteStats[selectedIdea.id] || {}).downvotes || 0}</span>
+                        </div>
+                        
+                        <div className="stat-item net-score">
+                          <span className="vote-emoji">📊</span>
+                          <span className="vote-text">
+                            <strong>Net Score</strong>
+                            <small>Overall rating</small>
+                          </span>
+                          <span className="vote-count-badge">
+                            {((voteStats[selectedIdea.id] || {}).upvotes || 0) - ((voteStats[selectedIdea.id] || {}).downvotes || 0)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                  ) : (
+                    // Regular user view - show voting buttons
+                    <>
+                      <p className="voting-prompt">What do you think about this idea?</p>
+                      <div className="vote-buttons enhanced">
+                        <button
+                          className={`vote-btn upvote enhanced ${userVotes[selectedIdea.id]?.voteType === 'UP' ? 'active' : ''}`}
+                          onClick={() => handleVote(selectedIdea.id, 'UP')}
+                          disabled={votingLoading[selectedIdea.id]}
+                        >
+                          <span className="vote-emoji">👍</span>
+                          <span className="vote-text">
+                            <strong>Upvote</strong>
+                            <small>I like this idea</small>
+                          </span>
+                          <span className="vote-count-badge">{(voteStats[selectedIdea.id] || {}).upvotes || 0}</span>
+                        </button>
+                        
+                        <button
+                          className={`vote-btn downvote enhanced ${userVotes[selectedIdea.id]?.voteType === 'DOWN' ? 'active' : ''}`}
+                          onClick={() => handleVote(selectedIdea.id, 'DOWN')}
+                          disabled={votingLoading[selectedIdea.id]}
+                        >
+                          <span className="vote-emoji">👎</span>
+                          <span className="vote-text">
+                            <strong>Downvote</strong>
+                            <small>Needs improvement</small>
+                          </span>
+                          <span className="vote-count-badge">{(voteStats[selectedIdea.id] || {}).downvotes || 0}</span>
+                        </button>
+                      </div>
+                      
+                      {userVotes[selectedIdea.id] && (
+                        <div className="user-vote-status">
+                          <span className="status-icon">
+                            {userVotes[selectedIdea.id].voteType === 'UP' ? '✅' : '❌'}
+                          </span>
+                          You {userVotes[selectedIdea.id].voteType === 'UP' ? 'upvoted' : 'downvoted'} this idea
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

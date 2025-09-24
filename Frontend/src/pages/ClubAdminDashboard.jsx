@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { clubApi } from '../api/club';
 import { eventApi } from '../api/event.js';
 import { ideaApi } from '../api/idea.js';
@@ -7,6 +8,8 @@ import EventManagementModal from '../components/EventManagementModal';
 import './ClubAdminDashboard.css';
 
 export default function ClubAdminDashboard() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [clubs, setClubs] = useState([]);
   const [proposals, setProposals] = useState([]);
@@ -17,8 +20,15 @@ export default function ClubAdminDashboard() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
-  const [expandedProposals, setExpandedProposals] = useState({});
-  const [proposalIdeas, setProposalIdeas] = useState({});
+  // Handle URL parameters for tab navigation
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'clubs', 'proposals', 'events', 'analytics'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
+
   // Fetch real data from APIs
   useEffect(() => {
     fetchClubs();
@@ -26,6 +36,66 @@ export default function ClubAdminDashboard() {
     fetchEvents();
     fetchNotifications();
   }, []);
+
+  // Set up periodic refresh to check for expired proposals
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Only refresh proposals if we're on the proposals tab
+      if (activeTab === 'proposals') {
+        console.log('Periodic refresh: Checking for expired proposals...');
+        fetchProposals();
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
+  // Utility function to check if a proposal is still active based on deadline
+  const isProposalActive = (submissionDeadline) => {
+    if (!submissionDeadline) {
+      console.log('No deadline found, keeping proposal active');
+      return true; // Keep proposals without deadline
+    }
+    
+    // Handle different date formats
+    let deadline;
+    if (submissionDeadline instanceof Date) {
+      deadline = submissionDeadline;
+    } else if (typeof submissionDeadline === 'string') {
+      // Try parsing the date string
+      deadline = new Date(submissionDeadline);
+      // If invalid, try parsing DD/MM/YYYY format
+      if (isNaN(deadline.getTime()) && submissionDeadline.includes('/')) {
+        const parts = submissionDeadline.split('/');
+        if (parts.length === 3) {
+          // Assume DD/MM/YYYY format
+          deadline = new Date(parts[2], parts[1] - 1, parts[0]);
+        }
+      }
+    } else {
+      deadline = new Date(submissionDeadline);
+    }
+    
+    if (isNaN(deadline.getTime())) {
+      console.log(`Invalid date format: ${submissionDeadline}, keeping proposal active`);
+      return true; // Keep proposals with invalid dates
+    }
+    
+    const now = new Date();
+    const gracePeriodEnd = new Date(deadline);
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 1); // Add 1 day grace period
+    
+    const isActive = now <= gracePeriodEnd;
+    
+    // Debug logging
+    console.log(`Checking proposal deadline: ${submissionDeadline}`);
+    console.log(`Parsed deadline: ${deadline.toLocaleDateString()}`);
+    console.log(`Grace period ends: ${gracePeriodEnd.toLocaleDateString()}`);
+    console.log(`Current time: ${now.toLocaleDateString()}`);
+    console.log(`Is active: ${isActive}`);
+    
+    return isActive;
+  };
 
   const fetchClubs = async () => {
     try {
@@ -63,18 +133,23 @@ export default function ClubAdminDashboard() {
         title: event.title,
         description: event.description,
         clubName: event.clubName,
-        submissionDeadline: event.submissionDeadline,
+        submissionDeadline: event.ideaSubmissionDeadline || event.submissionDeadline,
         status: 'active',
         upvotes: 0,
         ideas: []
       }));
       
-      setProposals(proposalsData || []);
+      // Filter out proposals where deadline has passed (with 1 day grace period)
+      console.log('All proposals before filtering:', proposalsData);
+      const activeProposals = proposalsData.filter(proposal => {
+        const isActive = isProposalActive(proposal.submissionDeadline);
+        console.log(`Proposal "${proposal.title}" - Active: ${isActive}`);
+        return isActive;
+      });
+      console.log('Active proposals after filtering:', activeProposals);
       
-      // Fetch ideas for each proposal
-      for (const proposal of proposalsData) {
-        await fetchIdeasForProposal(proposal.id);
-      }
+      setProposals(activeProposals || []);
+      
     } catch (error) {
       console.error('Error fetching proposals:', error);
       // Fallback to mock proposals if API fails
@@ -100,40 +175,19 @@ export default function ClubAdminDashboard() {
           ideas: []
         }
       ];
-      setProposals(mockProposals);
-    }
-  };
-
-  const fetchIdeasForProposal = async (proposalId) => {
-    try {
-      // Use event API to fetch ideas for this event
-      const ideas = await eventApi.getIdeasForEvent(proposalId);
       
-      setProposalIdeas(prev => ({
-        ...prev,
-        [proposalId]: Array.isArray(ideas) ? ideas : []
-      }));
-    } catch (error) {
-      console.error(`Error fetching ideas for event ${proposalId}:`, error);
-      // Set empty array if there's an error
-      setProposalIdeas(prev => ({
-        ...prev,
-        [proposalId]: []
-      }));
+      // Apply same filtering logic to mock proposals
+      const activeMockProposals = mockProposals.filter(proposal => 
+        isProposalActive(proposal.submissionDeadline)
+      );
+      
+      setProposals(activeMockProposals);
     }
   };
 
-  const toggleProposal = async (proposalId) => {
-    const isExpanded = expandedProposals[proposalId];
-    setExpandedProposals(prev => ({
-      ...prev,
-      [proposalId]: !isExpanded
-    }));
-
-    // Always refresh ideas when expanding
-    if (!isExpanded) {
-      await fetchIdeasForProposal(proposalId);
-    }
+  const handleViewIdeas = (proposalId) => {
+    // Navigate to the ViewIdeas page for this event/proposal
+    navigate(`/events/${proposalId}/ideas`);
   };
 
   const fetchEvents = async () => {
@@ -513,13 +567,10 @@ export default function ClubAdminDashboard() {
       </div>
       <div className="proposals-grid">
         {proposals.map(proposal => (
-          <div key={proposal.id} className="proposal-card expandable">
-            <div className="proposal-header" onClick={() => toggleProposal(proposal.id)}>
+          <div key={proposal.id} className="proposal-card">
+            <div className="proposal-header">
               <div className="proposal-title-section">
                 <h3>{proposal.title}</h3>
-                <span className="expand-icon">
-                  {expandedProposals[proposal.id] ? '🔽' : '▶️'}
-                </span>
               </div>
               <span className={`status ${proposal.status}`}>
                 {proposal.status}
@@ -530,8 +581,28 @@ export default function ClubAdminDashboard() {
               <p>Topic Type: {proposal.type}</p>
               <p>Created: {proposal.date}</p>
               <p>Total Votes: {proposal.votes}</p>
-              {proposal.ideaSubmissionDeadline && (
-                <p>Idea Deadline: {new Date(proposal.ideaSubmissionDeadline).toLocaleDateString()}</p>
+              {proposal.submissionDeadline && (
+                <div className="deadline-info">
+                  <p>Submission Deadline: {new Date(proposal.submissionDeadline).toLocaleDateString()}</p>
+                  {(() => {
+                    const deadline = new Date(proposal.submissionDeadline);
+                    const now = new Date();
+                    const timeDiff = deadline.getTime() - now.getTime();
+                    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                    
+                    if (daysDiff < 0) {
+                      return <span className="deadline-status expired">⚠️ Expired (Grace period active)</span>;
+                    } else if (daysDiff === 0) {
+                      return <span className="deadline-status today">🔥 Deadline Today!</span>;
+                    } else if (daysDiff === 1) {
+                      return <span className="deadline-status tomorrow">⏰ Deadline Tomorrow</span>;
+                    } else if (daysDiff <= 3) {
+                      return <span className="deadline-status soon">📅 {daysDiff} days remaining</span>;
+                    } else {
+                      return <span className="deadline-status normal">📅 {daysDiff} days remaining</span>;
+                    }
+                  })()}
+                </div>
               )}
             </div>
             {proposal.description && (
@@ -540,53 +611,14 @@ export default function ClubAdminDashboard() {
               </div>
             )}
             
-            {expandedProposals[proposal.id] && (
-              <div className="proposal-ideas">
-                <h4>Submitted Ideas ({proposalIdeas[proposal.id]?.length || 0})</h4>
-                {proposalIdeas[proposal.id]?.map((idea, idx) => (
-                  <div key={idea.id || idx} className="idea-item">
-                    <div className="idea-header">
-                      <h5>{idea.title || 'Untitled Idea'}</h5>
-                      <span className="submitted-by">
-                        Submitted by: {idea.submittedBy || 'Anonymous'}
-                        {idea.studentEmail ? ` (${idea.studentEmail})` : ''}
-                      </span>
-                    </div>
-                    <div className="idea-content">
-                      <p>{idea.description || 'No description provided.'}</p>
-                      {idea.expectedOutcome && (
-                        <div className="expected-outcome">
-                          <strong>Expected Outcome:</strong> {idea.expectedOutcome}
-                        </div>
-                      )}
-                    </div>
-                    <div className="idea-footer">
-                      <span className="submission-date">
-                        Submitted on: {new Date(idea.createdAt || new Date()).toLocaleDateString()}
-                      </span>
-                      <div className="idea-actions">
-                        <button className="btn-success btn-sm">
-                          ✅ Approve
-                        </button>
-                        <button className="btn-warning btn-sm">
-                          📝 Review
-                        </button>
-                        <button className="btn-danger btn-sm">
-                          ❌ Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {(!proposalIdeas[proposal.id] || proposalIdeas[proposal.id].length === 0) && (
-                  <div className="no-ideas">
-                    <p>No ideas have been submitted for this event yet.</p>
-                  </div>
-                )}
-              </div>
-            )}
-            
             <div className="proposal-actions">
+              <button 
+                className="btn-primary"
+                onClick={() => handleViewIdeas(proposal.id)}
+                title="View all submitted ideas for this topic"
+              >
+                👁️ View Ideas
+              </button>
               <button className="btn-success">
                 ✅ Approve
               </button>
