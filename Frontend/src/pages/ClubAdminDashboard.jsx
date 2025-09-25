@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { clubApi } from '../api/club';
-import { eventApi } from '../api/event.js';
-import { ideaApi } from '../api/idea.js';
+import './ClubAdminDashboard.css';
 import ClubRegistrationModal from '../components/ClubRegistrationModal';
 import EventManagementModal from '../components/EventManagementModal';
-import './ClubAdminDashboard.css';
+import EventApprovalModal from '../components/EventApprovalModal';
+import { clubApi } from '../api/club';
+import { eventApi } from '../api/event.js';
 
 export default function ClubAdminDashboard() {
   const navigate = useNavigate();
@@ -14,17 +14,20 @@ export default function ClubAdminDashboard() {
   const [clubs, setClubs] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [events, setEvents] = useState([]);
+  const [activeEvents, setActiveEvents] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedProposal, setSelectedProposal] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
   // Handle URL parameters for tab navigation
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'clubs', 'proposals', 'events', 'analytics'].includes(tabParam)) {
+    if (tabParam && ['overview', 'clubs', 'proposals', 'events', 'active-events', 'analytics'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [location.search]);
@@ -34,6 +37,7 @@ export default function ClubAdminDashboard() {
     fetchClubs();
     fetchProposals();
     fetchEvents();
+    fetchActiveEvents();
     fetchNotifications();
   }, []);
 
@@ -127,12 +131,17 @@ export default function ClubAdminDashboard() {
 
   const fetchProposals = async () => {
     try {
-      const eventsData = await eventApi.getEventsAcceptingIdeas();
+      // Fetch events that accept ideas for proposals section
+      const response = await fetch('http://localhost:8080/api/events/club-topics');
+      const eventsData = await response.json();
       const proposalsData = eventsData.map(event => ({
         id: event.id,
         title: event.title,
         description: event.description,
         clubName: event.clubName,
+        type: event.type || 'WORKSHOP', // Add event type
+        date: event.createdAt ? new Date(event.createdAt).toLocaleDateString() : new Date().toLocaleDateString(), // Add creation date
+        votes: event.totalVotes || 0, // Add total votes (from ideas)
         submissionDeadline: event.ideaSubmissionDeadline || event.submissionDeadline,
         status: 'active',
         upvotes: 0,
@@ -159,6 +168,9 @@ export default function ClubAdminDashboard() {
           title: "Tech Workshop Ideas",
           description: "Submit ideas for upcoming technology workshops",
           clubName: "Coding Ninjas",
+          type: "WORKSHOP",
+          date: new Date().toLocaleDateString(),
+          votes: 12,
           submissionDeadline: "2024-02-15",
           status: 'active',
           upvotes: 12,
@@ -169,6 +181,9 @@ export default function ClubAdminDashboard() {
           title: "Design Challenge",
           description: "Creative design challenge for UI/UX projects",
           clubName: "Design Studio",
+          type: "COMPETITION",
+          date: new Date().toLocaleDateString(),
+          votes: 8,
           submissionDeadline: "2024-02-20",
           status: 'active',
           upvotes: 8,
@@ -190,9 +205,54 @@ export default function ClubAdminDashboard() {
     navigate(`/events/${proposalId}/ideas`);
   };
 
+  const handleApproveProposal = (proposal) => {
+    setSelectedProposal(proposal);
+    setShowApprovalModal(true);
+  };
+
+  const handleRejectProposal = async (proposalId) => {
+    if (window.confirm('Are you sure you want to reject this proposal?')) {
+      try {
+        // Call API to reject the proposal
+        await eventApi.updateEventStatus(proposalId, 'REJECTED');
+        console.log('Proposal rejected:', proposalId);
+        
+        // Refresh proposals list
+        await fetchProposals();
+        
+        // Show success message
+        alert('Proposal rejected successfully');
+      } catch (error) {
+        console.error('Error rejecting proposal:', error);
+        alert('Failed to reject proposal. Please try again.');
+      }
+    }
+  };
+
+  const handleEventApproval = async (eventData) => {
+    try {
+      // Call API to approve and create the full event
+      const approvedEvent = await eventApi.approveEventProposal(eventData);
+      console.log('Event approved and created:', approvedEvent);
+      
+      // Refresh proposals, events, and active events lists
+      await fetchProposals();
+      await fetchEvents();
+      await fetchActiveEvents();
+      
+      // Show success message
+      alert('Event approved and created successfully!');
+    } catch (error) {
+      console.error('Error approving event:', error);
+      throw error; // Re-throw to be handled by the modal
+    }
+  };
+
   const fetchEvents = async () => {
     try {
-      const eventsData = await eventApi.getAllEvents();
+      // Fetch events that accept ideas for the Topics for Ideas section
+      const response = await fetch('http://localhost:8080/api/events/club-topics');
+      const eventsData = await response.json();
       setEvents(eventsData || []);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -216,6 +276,57 @@ export default function ClubAdminDashboard() {
         }
       ];
       setEvents(mockEvents);
+    }
+  };
+
+  const fetchActiveEvents = async () => {
+    try {
+      // Fetch published events for admin dashboard
+      const response = await fetch('http://localhost:8080/api/events/admin/published');
+      const activeEventsData = await response.json();
+      setActiveEvents(activeEventsData || []);
+    } catch (error) {
+      console.error('Error fetching active events:', error);
+      // Fallback to mock active events if API fails
+      const mockActiveEvents = [
+        {
+          id: 1,
+          title: "Tech Workshop 2024",
+          description: "Learn latest technologies and frameworks",
+          clubName: "Coding Ninjas",
+          clubId: 1,
+          type: "WORKSHOP",
+          startDate: "2024-03-15T10:00",
+          endDate: "2024-03-15T17:00",
+          location: "Tech Hub, Room 101",
+          maxParticipants: 50,
+          currentParticipants: 25,
+          registrationFee: 500,
+          imageUrl: "/uploads/posters/tech-workshop.jpg",
+          status: 'PUBLISHED',
+          createdAt: "2024-02-01T10:00",
+          updatedAt: "2024-02-10T15:30"
+        },
+        {
+          id: 2,
+          title: "Design Hackathon",
+          description: "24-hour design challenge for creative minds",
+          clubName: "Design Studio",
+          clubId: 2,
+          type: "HACKATHON",
+          startDate: "2024-03-20T18:00",
+          endDate: "2024-03-21T18:00",
+          location: "Innovation Center",
+          maxParticipants: 100,
+          currentParticipants: 75,
+          registrationFee: 0,
+          imageUrl: "/uploads/posters/design-hackathon.jpg",
+          status: 'PUBLISHED',
+          createdAt: "2024-02-05T14:00",
+          updatedAt: "2024-02-15T09:20"
+        }
+      ];
+      setActiveEvents(mockActiveEvents);
     }
   };
 
@@ -268,6 +379,47 @@ export default function ClubAdminDashboard() {
   const handleEventSaved = async (savedEvent) => {
     console.log('Event saved:', savedEvent);
     await fetchEvents(); // Refresh events list immediately
+    await fetchActiveEvents(); // Also refresh active events
+  };
+
+  const handleViewEventDetails = (event) => {
+    // Create a detailed view modal or navigate to event details page
+    alert(`Event Details:\n\nTitle: ${event.title}\nType: ${event.type}\nClub: ${event.clubName}\nStart: ${event.startDate ? new Date(event.startDate).toLocaleString() : 'Not set'}\nEnd: ${event.endDate ? new Date(event.endDate).toLocaleString() : 'Not set'}\nLocation: ${event.location || 'Not specified'}\nCapacity: ${event.maxParticipants || 'Unlimited'}\nFee: ${event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}`);
+  };
+
+  const handleViewRegistrations = async (eventId) => {
+    try {
+      // Fetch registrations for this event
+      const response = await fetch(`http://localhost:8080/api/event-registrations/event/${eventId}`);
+      if (response.ok) {
+        const registrations = await response.json();
+        
+        // Create a detailed view of registrations
+        let registrationDetails = `Event Registrations:\n\n`;
+        registrationDetails += `Total Registrations: ${registrations.length}\n\n`;
+        
+        if (registrations.length === 0) {
+          registrationDetails += 'No registrations yet.';
+        } else {
+          registrations.forEach((reg, index) => {
+            registrationDetails += `${index + 1}. ${reg.userName} (${reg.userEmail})\n`;
+            registrationDetails += `   Status: ${reg.status}\n`;
+            registrationDetails += `   Registered: ${new Date(reg.registeredAt).toLocaleString()}\n`;
+            if (reg.registrationNotes) {
+              registrationDetails += `   Notes: ${reg.registrationNotes}\n`;
+            }
+            registrationDetails += `   Payment: ${reg.paymentStatus}\n\n`;
+          });
+        }
+        
+        alert(registrationDetails);
+      } else {
+        throw new Error('Failed to fetch registrations');
+      }
+    } catch (error) {
+      console.error('Error fetching registrations:', error);
+      alert('Failed to load registrations. Please try again.');
+    }
   };
 
   const toggleDropdown = (eventId) => {
@@ -604,12 +756,10 @@ export default function ClubAdminDashboard() {
                   })()}
                 </div>
               )}
+              {proposal.description && (
+                <p className="proposal-description"><strong>Description:</strong> {proposal.description}</p>
+              )}
             </div>
-            {proposal.description && (
-              <div className="proposal-description">
-                <p>{proposal.description}</p>
-              </div>
-            )}
             
             <div className="proposal-actions">
               <button 
@@ -619,10 +769,16 @@ export default function ClubAdminDashboard() {
               >
                 👁️ View Ideas
               </button>
-              <button className="btn-success">
+              <button 
+                className="btn-success"
+                onClick={() => handleApproveProposal(proposal)}
+              >
                 ✅ Approve
               </button>
-              <button className="btn-danger">
+              <button 
+                className="btn-danger"
+                onClick={() => handleRejectProposal(proposal.id)}
+              >
                 ❌ Reject
               </button>
             </div>
@@ -651,6 +807,120 @@ export default function ClubAdminDashboard() {
     </div>
   );
 
+  const renderActiveEvents = () => (
+    <div className="active-events-section">
+      <div className="section-header">
+        <h2>Active Events</h2>
+        <p>Manage your published events with full details</p>
+      </div>
+      
+      {loading ? (
+        <div className="loading-state">Loading active events...</div>
+      ) : activeEvents.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🎪</div>
+          <h3>No Active Events</h3>
+          <p>Approved events will appear here with full details</p>
+        </div>
+      ) : (
+        <div className="active-events-grid">
+          {activeEvents.map(event => (
+            <div key={event.id} className="active-event-card">
+              <div className="event-header">
+                {event.imageUrl && (
+                  <div className="event-poster">
+                    <img src={event.imageUrl} alt={event.title} />
+                  </div>
+                )}
+                <div className="event-title-section">
+                  <h3>{event.title}</h3>
+                  <span className={`event-type ${event.type?.toLowerCase()}`}>
+                    {event.type}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="event-details">
+                <div className="detail-row">
+                  <span className="detail-label">🏛️ Club:</span>
+                  <span className="detail-value">{event.clubName}</span>
+                </div>
+                
+                {event.startDate && (
+                  <div className="detail-row">
+                    <span className="detail-label">📅 Start:</span>
+                    <span className="detail-value">
+                      {new Date(event.startDate).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                
+                {event.endDate && (
+                  <div className="detail-row">
+                    <span className="detail-label">🏁 End:</span>
+                    <span className="detail-value">
+                      {new Date(event.endDate).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                
+                {event.location && (
+                  <div className="detail-row">
+                    <span className="detail-label">📍 Location:</span>
+                    <span className="detail-value">{event.location}</span>
+                  </div>
+                )}
+                
+                {event.maxParticipants && (
+                  <div className="detail-row">
+                    <span className="detail-label">👥 Capacity:</span>
+                    <span className="detail-value">
+                      {event.currentParticipants || 0} / {event.maxParticipants}
+                    </span>
+                  </div>
+                )}
+                
+                {event.registrationFee !== undefined && (
+                  <div className="detail-row">
+                    <span className="detail-label">💰 Fee:</span>
+                    <span className="detail-value">
+                      {event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}
+                    </span>
+                  </div>
+                )}
+                
+              </div>
+              
+              {event.description && (
+                <div className="event-description">
+                  <h4>Description</h4>
+                  <p>{event.description}</p>
+                </div>
+              )}
+              
+              <div className="event-actions">
+                <button 
+                  className="btn-secondary"
+                  onClick={() => handleEditEvent(event)}
+                  title="Edit event information"
+                >
+                  ✏️ Edit Event
+                </button>
+                <button 
+                  className="btn-info"
+                  onClick={() => handleViewRegistrations(event.id)}
+                  title="View and manage event registrations"
+                >
+                  📋 Registrations ({event.currentParticipants || 0})
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
@@ -659,6 +929,8 @@ export default function ClubAdminDashboard() {
         return renderClubManagement();
       case 'events':
         return renderEventManagement();
+      case 'active-events':
+        return renderActiveEvents();
       case 'proposals':
         return renderProposalManagement();
       case 'analytics':
@@ -704,6 +976,13 @@ export default function ClubAdminDashboard() {
             <span>Topics for Ideas</span>
           </button>
           <button 
+            className={`nav-item ${activeTab === 'active-events' ? 'active' : ''}`}
+            onClick={() => setActiveTab('active-events')}
+          >
+            <span className="nav-icon">🎪</span>
+            <span>Active Events</span>
+          </button>
+          <button 
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
@@ -719,7 +998,8 @@ export default function ClubAdminDashboard() {
             activeTab === 'overview' ? 'Dashboard Overview' :
             activeTab === 'clubs' ? 'My Clubs' :
             activeTab === 'proposals' ? 'Event Proposals' :
-            activeTab === 'events' ? 'Topics for Ideas' : 'Analytics'
+            activeTab === 'events' ? 'Topics for Ideas' :
+            activeTab === 'active-events' ? 'Active Events' : 'Analytics'
           }</h1>
           <div className="header-actions">
             {activeTab === 'clubs' && (
@@ -729,15 +1009,6 @@ export default function ClubAdminDashboard() {
               >
                 <span className="btn-icon">+</span>
                 Register New Club
-              </button>
-            )}
-            {activeTab === 'events' && (
-              <button 
-                className="btn-primary" 
-                onClick={handleCreateTopic}
-              >
-                <span className="btn-icon">+</span>
-                Create New Topic
               </button>
             )}
           </div>
@@ -763,6 +1034,17 @@ export default function ClubAdminDashboard() {
           event={selectedEvent}
           onEventSaved={handleEventSaved}
           clubs={clubs}
+        />
+      )}
+
+      {showApprovalModal && (
+        <EventApprovalModal
+          proposal={selectedProposal}
+          onClose={() => {
+            setShowApprovalModal(false);
+            setSelectedProposal(null);
+          }}
+          onApprove={handleEventApproval}
         />
       )}
     </div>

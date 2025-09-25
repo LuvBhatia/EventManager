@@ -101,6 +101,19 @@ export default function EventManagementModal({
         [name]: ''
       }));
     }
+
+    // Real-time validation for deadline
+    if (name === 'ideaSubmissionDeadline' && value) {
+      const selectedDateTime = new Date(value);
+      const currentDateTime = new Date();
+      
+      if (selectedDateTime <= currentDateTime) {
+        setErrors(prev => ({
+          ...prev,
+          ideaSubmissionDeadline: 'Deadline must be in the future'
+        }));
+      }
+    }
   };
 
   const validateForm = () => {
@@ -118,6 +131,15 @@ export default function EventManagementModal({
       newErrors.clubId = 'Club selection is required';
     }
 
+    // Validate deadline is not in the past
+    if (formData.ideaSubmissionDeadline) {
+      const selectedDateTime = new Date(formData.ideaSubmissionDeadline);
+      const currentDateTime = new Date();
+      
+      if (selectedDateTime <= currentDateTime) {
+        newErrors.ideaSubmissionDeadline = 'Deadline must be in the future';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -155,12 +177,11 @@ export default function EventManagementModal({
         location: null,
         maxParticipants: null,
         registrationFee: 0.0,
-        ideaSubmissionDeadline: formData.ideaSubmissionDeadline ? new Date(formData.ideaSubmissionDeadline).toISOString() : null,
+        ideaSubmissionDeadline: formData.ideaSubmissionDeadline ? formData.ideaSubmissionDeadline : null,
         acceptsIdeas: true,
         status: 'PUBLISHED',
         tags: null,
-        imageUrl: null,
-        externalLink: null
+        imageUrl: null
       };
 
       console.log('Sending event data:', eventData);
@@ -185,6 +206,17 @@ export default function EventManagementModal({
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return 'Not set';
     return new Date(dateTimeString).toLocaleString();
+  };
+
+  // Get current datetime in datetime-local format (YYYY-MM-DDTHH:MM)
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   if (!isOpen) return null;
@@ -364,11 +396,12 @@ export default function EventManagementModal({
                 id="ideaSubmissionDeadline"
                 name="ideaSubmissionDeadline"
                 value={formData.ideaSubmissionDeadline}
+                min={getCurrentDateTime()}
                 onChange={handleInputChange}
                 className={errors.ideaSubmissionDeadline ? 'error' : ''}
               />
               {errors.ideaSubmissionDeadline && <span className="error-text">{errors.ideaSubmissionDeadline}</span>}
-              <small className="help-text">Leave empty for no deadline</small>
+              <small className="help-text">Leave empty for no deadline. Only future dates and times are allowed.</small>
             </div>
 
 

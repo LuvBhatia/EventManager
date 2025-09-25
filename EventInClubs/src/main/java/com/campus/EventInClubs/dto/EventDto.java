@@ -35,13 +35,15 @@ public class EventDto {
     private String organizerName;
     private String tags;
     private String imageUrl;
-    private String externalLink;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
     // Deadline status fields
     private Boolean isExpired;
     private Boolean isViewOnly;
+    
+    // Vote information
+    private Integer totalVotes;
     
     // Helper method to check if registration is open
     public boolean isRegistrationOpen() {

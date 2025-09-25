@@ -59,7 +59,8 @@ export default function Navbar() {
         <nav className="navlinks">
           {!isAdmin && !isSuperAdmin && <Link to="/">Home</Link>}
           {token && !isAdmin && !isSuperAdmin && <Link to="/clubs">Clubs</Link>}
-          {token && !isAdmin && !isSuperAdmin && <Link to="/topics">Club Topics</Link>}
+          {token && !isAdmin && !isSuperAdmin && <Link to="/club-topics" className="nav-link">Club Topics</Link>}
+          {token && !isAdmin && !isSuperAdmin && <Link to="/active-events" className="nav-link">🎪 Active Events</Link>}
           {token && !isAdmin && !isSuperAdmin && <Link to="/leaderboard">🏆 Leaderboard</Link>}
           {!isAuthenticated ? (
             <>

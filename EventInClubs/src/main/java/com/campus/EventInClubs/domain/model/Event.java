@@ -87,8 +87,6 @@ public class Event {
     @Column(name = "image_url")
     private String imageUrl;
     
-    @Column(name = "external_link")
-    private String externalLink;
     
     @Column(name = "is_active", nullable = true)
     @Builder.Default

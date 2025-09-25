@@ -29,6 +29,9 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
     @Query("SELECT COUNT(v) FROM Vote v WHERE v.idea.id = :ideaId AND v.voteType = 'DOWN'")
     Long countDownvotesByIdeaId(@Param("ideaId") Long ideaId);
     
+    @Query("SELECT COUNT(v) FROM Vote v WHERE v.idea.id = :ideaId")
+    Long countTotalVotesByIdeaId(@Param("ideaId") Long ideaId);
+    
     @Query("SELECT v.voteType FROM Vote v WHERE v.user.id = :userId AND v.idea.id = :ideaId")
     Optional<VoteType> findVoteTypeByUserIdAndIdeaId(@Param("userId") Long userId, @Param("ideaId") Long ideaId);
     

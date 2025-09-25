@@ -301,4 +301,90 @@ export const eventApi = {
       throw error;
     }
   },
+
+  // Update event status (approve/reject)
+  updateEventStatus: async (eventId, status) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/status`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update event status: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating event status:', error);
+      throw error;
+    }
+  },
+
+  // Approve event proposal with detailed information
+  approveEventProposal: async (eventData) => {
+    try {
+      const formData = new FormData();
+      
+      // Map frontend field names to backend parameter names
+      const fieldMapping = {
+        'proposalId': 'proposalId',
+        'eventName': 'eventName',
+        'eventType': 'eventType',
+        'startDateTime': 'startDateTime',
+        'endDateTime': 'endDateTime',
+        'location': 'location',
+        'maxParticipants': 'maxParticipants',
+        'registrationFee': 'registrationFee',
+        'description': 'description',
+        'poster': 'poster'
+      };
+      
+      // Required fields that must always be sent
+      const requiredFields = ['proposalId', 'eventName', 'eventType', 'startDateTime', 'endDateTime'];
+      
+      // Add mapped data to FormData
+      console.log('Event data being sent:', eventData);
+      Object.keys(eventData).forEach(key => {
+        const backendFieldName = fieldMapping[key];
+        if (backendFieldName && eventData[key] !== null && eventData[key] !== undefined) {
+          if (key === 'poster' && eventData[key]) {
+            // Temporarily skip poster upload to debug basic approval
+            console.log(`Skipping poster file for now: ${eventData[key].name}`);
+          } else if (requiredFields.includes(key) || eventData[key] !== '') {
+            // Always send required fields, skip empty strings for optional fields
+            formData.append(backendFieldName, eventData[key]);
+            console.log(`Added ${backendFieldName}: ${eventData[key]}`);
+          }
+        }
+      });
+      
+      // Log all FormData entries
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/events/approve-proposal`, {
+        method: 'POST',
+        headers: {
+          // Don't set Content-Type for FormData, let browser set it with boundary
+          'Authorization': getAuthHeaders().Authorization,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to approve event proposal: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error approving event proposal:', error);
+      throw error;
+    }
+  },
 };

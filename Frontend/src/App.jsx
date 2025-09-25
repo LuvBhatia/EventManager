@@ -6,8 +6,10 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Clubs from "./pages/Clubs";
-import ClubTopics from "./pages/ClubTopics";
+import Problems from './pages/Problems';
+import ClubTopics from './pages/ClubTopics';
 import ClubAdminDashboard from './pages/ClubAdminDashboard';
+import ActiveEvents from './pages/ActiveEvents';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ViewIdeas from "./pages/ViewIdeas";
 import Leaderboard from "./pages/Leaderboard";
@@ -30,6 +32,10 @@ export default function App() {
         <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/problems" element={<Problems />} />
+        <Route path="/club-topics" element={<ClubTopics />} />
+        <Route path="/active-events" element={<ActiveEvents />} />
+        <Route path="/view-ideas/:eventId" element={<ViewIdeas />} />
         {/* Example protected page */}
         <Route path="/dashboard" element={<ProtectedRoute><div style={{ padding: 24 }}>Dashboard (protected)</div></ProtectedRoute>} />
       </Routes>

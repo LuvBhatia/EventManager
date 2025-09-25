@@ -29,6 +29,25 @@ public class EventController {
         return ResponseEntity.ok(events);
     }
     
+    
+    @GetMapping("/club-topics")
+    public ResponseEntity<List<EventDto>> getEventsForClubTopics() {
+        List<EventDto> events = eventService.getEventsForClubTopics();
+        return ResponseEntity.ok(events);
+    }
+    
+    @GetMapping("/admin/published")
+    public ResponseEntity<List<EventDto>> getPublishedEventsForAdmin() {
+        List<EventDto> events = eventService.getPublishedEventsForAdmin();
+        return ResponseEntity.ok(events);
+    }
+    
+    @GetMapping("/active")
+    public ResponseEntity<List<EventDto>> getActiveEventsForStudents() {
+        List<EventDto> events = eventService.getActiveEventsForStudents();
+        return ResponseEntity.ok(events);
+    }
+    
     @GetMapping("/upcoming")
     public ResponseEntity<List<EventDto>> getUpcomingEvents() {
         List<EventDto> events = eventService.getUpcomingEvents();
@@ -248,6 +267,78 @@ public class EventController {
             log.error("Error checking idea submission status for event: {} and user: {}", eventId, userId, e);
             return ResponseEntity.internalServerError()
                     .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @PutMapping("/{eventId}/status")
+    public ResponseEntity<?> updateEventStatus(@PathVariable Long eventId, @RequestBody java.util.Map<String, String> statusUpdate) {
+        try {
+            String status = statusUpdate.get("status");
+            EventDto updatedEvent = eventService.updateEventStatus(eventId, status);
+            return ResponseEntity.ok(updatedEvent);
+        } catch (RuntimeException e) {
+            log.error("Error updating event status: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error updating event status for event: {}", eventId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @PostMapping("/approve-proposal")
+    public ResponseEntity<?> approveEventProposal(
+            @RequestParam("proposalId") Long proposalId,
+            @RequestParam("eventName") String eventName,
+            @RequestParam("eventType") String eventType,
+            @RequestParam("startDateTime") String startDateTime,
+            @RequestParam("endDateTime") String endDateTime,
+            @RequestParam(value = "location", required = false) String location,
+            @RequestParam(value = "maxParticipants", required = false) Integer maxParticipants,
+            @RequestParam(value = "registrationFee", required = false, defaultValue = "0") Double registrationFee,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "poster", required = false) org.springframework.web.multipart.MultipartFile poster) {
+        
+        try {
+            log.info("Approving event proposal with parameters:");
+            log.info("proposalId: {}", proposalId);
+            log.info("eventName: {}", eventName);
+            log.info("eventType: {}", eventType);
+            log.info("startDateTime: {}", startDateTime);
+            log.info("endDateTime: {}", endDateTime);
+            log.info("location: {}", location);
+            log.info("maxParticipants: {}", maxParticipants);
+            log.info("registrationFee: {}", registrationFee);
+            log.info("description: {}", description);
+            log.info("poster: {}", poster != null ? poster.getOriginalFilename() : "null");
+            
+            EventDto approvedEvent = eventService.approveEventProposal(
+                proposalId, eventName, eventType, startDateTime, endDateTime,
+                location, maxParticipants, registrationFee, 
+                description, poster
+            );
+            return ResponseEntity.ok(approvedEvent);
+        } catch (RuntimeException e) {
+            log.error("Error approving event proposal: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error approving event proposal: {}", proposalId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @DeleteMapping("/approved-events")
+    public ResponseEntity<?> deleteApprovedEvents() {
+        try {
+            eventService.deleteApprovedEvents();
+            return ResponseEntity.ok(java.util.Map.of("message", "All approved events marked as inactive successfully"));
+        } catch (Exception e) {
+            log.error("Error marking approved events as inactive: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error: " + e.getMessage()));
         }
     }
 }
