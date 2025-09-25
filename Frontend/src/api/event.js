@@ -193,6 +193,20 @@ export const eventApi = {
     return response.json();
   },
 
+  // Get events for club topics (events that accept ideas)
+  getEventsForClubTopics: async () => {
+    const response = await fetch(`${API_BASE_URL}/events/club-topics`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch club topics: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
   // Get ideas for an event
   getIdeasForEvent: async (eventId) => {
     console.log('=== Starting getIdeasForEvent ===');

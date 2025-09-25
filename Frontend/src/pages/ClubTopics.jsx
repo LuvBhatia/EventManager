@@ -21,10 +21,11 @@ export default function ClubTopics() {
   const fetchData = async () => {
     try {
       const [eventsData, clubsData] = await Promise.all([
-        eventApi.getAllEvents(),
+        eventApi.getEventsForClubTopics(),
         clubApi.getAllClubs()
       ]);
       
+      console.log('Fetched events for club topics:', eventsData);
       setEvents(eventsData);
       setClubs(clubsData);
       setError(null);
@@ -63,8 +64,8 @@ export default function ClubTopics() {
   return (
     <div className="club-topics-container">
       <div className="topics-header">
-        <h1>Club Events</h1>
-        <p>Explore ongoing and upcoming events from different clubs</p>
+        <h1>Club Topics</h1>
+        <p>Explore topics from different clubs where you can submit your ideas</p>
       </div>
 
       <div className="topics-filters">
@@ -195,8 +196,8 @@ export default function ClubTopics() {
 
       {!loading && filteredEvents.length === 0 && (
         <div className="no-results">
-          <h3>No events found</h3>
-          <p>Try adjusting your search or select a different club</p>
+          <h3>No topics found</h3>
+          <p>There are currently no topics accepting ideas. Try adjusting your search or check back later!</p>
         </div>
       )}
     </div>

@@ -501,8 +501,18 @@ export default function ClubAdminDashboard() {
             📅
           </div>
           <div className="stat-content">
-            <h3>{events.length}</h3>
+            <h3>{activeEvents.length}</h3>
             <p>Active Events</p>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon">
+            💡
+          </div>
+          <div className="stat-content">
+            <h3>{events.length}</h3>
+            <p>Topics for Ideas</p>
           </div>
         </div>
         
@@ -512,7 +522,7 @@ export default function ClubAdminDashboard() {
           </div>
           <div className="stat-content">
             <h3>{proposals.length}</h3>
-            <p>Total Proposals</p>
+            <p>Event Proposals</p>
           </div>
         </div>
         
