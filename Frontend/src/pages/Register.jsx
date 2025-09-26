@@ -112,14 +112,26 @@ export default function Register() {
     setLoading(true);
     try {
       const { confirmPassword, ...registrationData } = formData;
-      await registerUser(registrationData);
+      const response = await registerUser(registrationData);
       
-      // Show success message
-      setErrors({ success: "Account created successfully! Redirecting to login..." });
-      
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
+      // Check if this is a super admin request
+      if (response.data?.type === 'super_admin_request') {
+        setErrors({ 
+          success: "Super admin request submitted successfully! Please wait for approval from an existing super admin. You will be notified once your request is reviewed." 
+        });
+        
+        // Don't redirect for super admin requests, just show the message
+        setTimeout(() => {
+          navigate("/login");
+        }, 5000);
+      } else {
+        // Regular registration success
+        setErrors({ success: "Account created successfully! Redirecting to login..." });
+        
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      }
       
     } catch (err) {
       const errorMessage = err?.response?.data?.error || "Registration failed. Please try again.";

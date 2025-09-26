@@ -3,6 +3,8 @@ import { clubApi } from '../api/club';
 import { eventApi } from '../api/event.js';
 import { userApi } from '../api/user';
 import { analyticsApi } from '../api/analytics';
+import { superAdminRequestApi } from '../api/superAdminRequests';
+import SuperAdminRequests from './SuperAdminRequests';
 import './SuperAdminDashboard.css';
 
 export default function SuperAdminDashboard() {
@@ -12,6 +14,7 @@ export default function SuperAdminDashboard() {
   const [pendingClubs, setPendingClubs] = useState([]);
   const [users, setUsers] = useState([]);
   const [analytics, setAnalytics] = useState({});
+  const [pendingSuperAdminRequests, setPendingSuperAdminRequests] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,7 +28,8 @@ export default function SuperAdminDashboard() {
         fetchEvents(),
         fetchPendingClubs(),
         fetchUsers(),
-        fetchAnalytics()
+        fetchAnalytics(),
+        fetchPendingSuperAdminRequests()
       ]);
       setLoading(false);
     } catch (error) {
@@ -81,6 +85,16 @@ export default function SuperAdminDashboard() {
     } catch (error) {
       console.error('Error fetching analytics:', error);
       setAnalytics({});
+    }
+  };
+
+  const fetchPendingSuperAdminRequests = async () => {
+    try {
+      const response = await superAdminRequestApi.getPendingRequestsCount();
+      setPendingSuperAdminRequests(response.data.pendingRequests || 0);
+    } catch (error) {
+      console.error('Error fetching pending super admin requests:', error);
+      setPendingSuperAdminRequests(0);
     }
   };
 
@@ -152,6 +166,14 @@ export default function SuperAdminDashboard() {
           <div className="stat-content">
             <h3>{users.length}</h3>
             <p>Total Users</p>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon">👑</div>
+          <div className="stat-content">
+            <h3>{pendingSuperAdminRequests}</h3>
+            <p>Super Admin Requests</p>
           </div>
         </div>
       </div>
@@ -292,6 +314,8 @@ export default function SuperAdminDashboard() {
         return renderOverview();
       case 'approvals':
         return renderClubApprovals();
+      case 'super-admin-requests':
+        return <SuperAdminRequests />;
       case 'system':
         return renderSystemManagement();
       default:
@@ -322,6 +346,16 @@ export default function SuperAdminDashboard() {
             Club Approvals
             {pendingClubs.length > 0 && (
               <span className="nav-badge">{pendingClubs.length}</span>
+            )}
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'super-admin-requests' ? 'active' : ''}`}
+            onClick={() => setActiveTab('super-admin-requests')}
+          >
+            <span className="nav-icon">👑</span>
+            Super Admin Requests
+            {pendingSuperAdminRequests > 0 && (
+              <span className="nav-badge">{pendingSuperAdminRequests}</span>
             )}
           </button>
           <button

@@ -6,6 +6,7 @@ import com.campus.EventInClubs.dto.GoogleLoginRequest;
 import com.campus.EventInClubs.dto.RegisterRequest;
 import com.campus.EventInClubs.domain.model.User;
 import com.campus.EventInClubs.service.UserService;
+import com.campus.EventInClubs.service.SuperAdminRequestService;
 import com.campus.EventInClubs.security.JwtUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class AuthController {
 
     private final UserService userService;
+    private final SuperAdminRequestService superAdminRequestService;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final RestTemplate restTemplate = new RestTemplate();
@@ -39,8 +41,23 @@ public class AuthController {
                         .body(Map.of("error", "role must be one of STUDENT, CLUB_ADMIN, SUPER_ADMIN"));
             }
 
-            userService.register(req.getName(), req.getEmail(), req.getPassword(), role);
-            return ResponseEntity.ok(Map.of("message", "user registered successfully"));
+            // Handle super admin registration differently
+            if (role == Role.SUPER_ADMIN) {
+                try {
+                    superAdminRequestService.createSuperAdminRequest(req.getName(), req.getEmail(), req.getPassword());
+                    return ResponseEntity.ok(Map.of(
+                            "message", "Super admin request submitted successfully. Please wait for approval from an existing super admin.",
+                            "type", "super_admin_request"
+                    ));
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", e.getMessage()));
+                }
+            } else {
+                // Regular registration for students and club admins
+                userService.register(req.getName(), req.getEmail(), req.getPassword(), role);
+                return ResponseEntity.ok(Map.of("message", "user registered successfully"));
+            }
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
