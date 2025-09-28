@@ -30,11 +30,21 @@ public class SuperAdminRequestService {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        // Check if there's already a pending request for this email
+        // Check if there's already a request for this email (any status)
         if (superAdminRequestRepository.existsByEmail(email)) {
             Optional<SuperAdminRequest> existingRequest = superAdminRequestRepository.findByEmail(email);
-            if (existingRequest.isPresent() && existingRequest.get().getStatus() == SuperAdminRequestStatus.PENDING) {
-                throw new IllegalArgumentException("Super admin request already pending for this email");
+            if (existingRequest.isPresent()) {
+                SuperAdminRequestStatus status = existingRequest.get().getStatus();
+                switch (status) {
+                    case PENDING:
+                        throw new IllegalArgumentException("Super admin request already pending for this email");
+                    case APPROVED:
+                        throw new IllegalArgumentException("Super admin request for this email has already been approved");
+                    case REJECTED:
+                        throw new IllegalArgumentException("Super admin request for this email was previously rejected. Please contact support if you believe this is an error.");
+                    default:
+                        throw new IllegalArgumentException("Super admin request already exists for this email");
+                }
             }
         }
 
