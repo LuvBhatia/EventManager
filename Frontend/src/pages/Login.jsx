@@ -58,31 +58,7 @@ export default function Login() {
     
     setLoading(true);
     try {
-      // Check for Super Admin credentials first
-      if (formData.email === 'superadmin@eventinclubs.com' && 
-          formData.password === 'SuperAdmin@2024') {
-        
-        // Set super admin session
-        localStorage.setItem('superAdminToken', 'super_admin_token_2024');
-        localStorage.setItem('userRole', 'SUPER_ADMIN');
-        localStorage.setItem('userId', '0');
-        localStorage.setItem('email', formData.email);
-        
-        if (rememberMe) {
-          localStorage.setItem("rememberMe", "true");
-        }
-        
-        // Trigger navbar update and navigate to super admin dashboard
-        window.dispatchEvent(new Event('authStateChanged'));
-        setTimeout(() => {
-          navigate('/superadmin/dashboard');
-        }, 1000);
-        
-        setLoading(false);
-        return;
-      }
-      
-      // Regular user login
+      // Authenticate via backend (handles SUPER_ADMIN as well)
       const res = await loginUser(formData);
       console.log('Full login response:', JSON.stringify(res, null, 2));
       
@@ -143,9 +119,10 @@ export default function Login() {
         // Store complete user data
         localStorage.setItem("user", JSON.stringify(userData));
         
-        // For backward compatibility
+        // For backward compatibility + navbar checks
         localStorage.setItem("email", userData.email);
         localStorage.setItem("role", userData.role);
+        localStorage.setItem("userRole", userData.role);
         
         // Verify storage
         console.log('Verifying storage:');
@@ -165,10 +142,12 @@ export default function Login() {
       // Show success message before redirecting
       setTimeout(() => {
         // Redirect based on user role
-        if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
-          navigate("/admin/dashboard");
+        if (role === 'SUPER_ADMIN') {
+          navigate('/superadmin/dashboard');
+        } else if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
+          navigate('/admin/dashboard');
         } else {
-          navigate("/");
+          navigate('/');
         }
       }, 1000);
       

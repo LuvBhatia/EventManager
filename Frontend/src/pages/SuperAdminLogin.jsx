@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginUser } from '../api/auth';
 import './SuperAdminLogin.css';
 
 export default function SuperAdminLogin() {
@@ -29,25 +30,30 @@ export default function SuperAdminLogin() {
     setError('');
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call backend login to obtain real JWT
+      const res = await loginUser({ email: credentials.email, password: credentials.password });
+      const { token, email, role } = res.data || {};
 
-      // Validate credentials
-      if (credentials.email === SUPER_ADMIN_CREDENTIALS.email && 
-          credentials.password === SUPER_ADMIN_CREDENTIALS.password) {
-        
-        // Set super admin session
-        localStorage.setItem('superAdminToken', 'super_admin_token_2024');
-        localStorage.setItem('userRole', 'SUPER_ADMIN');
-        localStorage.setItem('userId', '0'); // Super admin ID
-        
-        // Navigate to super admin dashboard
-        navigate('/superadmin/dashboard');
-      } else {
-        setError('Invalid email or password. Please check your credentials.');
+      if (!token || !email) {
+        throw new Error('Invalid login response');
       }
+
+      // Store token and role
+      localStorage.setItem('token', token);
+      localStorage.setItem('userRole', role || 'USER');
+      localStorage.setItem('email', email);
+
+      // Decode token to get userId if present
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.userId) {
+          localStorage.setItem('userId', payload.userId.toString());
+        }
+      } catch {}
+
+      navigate('/superadmin/dashboard');
     } catch (error) {
-      setError('Login failed. Please try again.');
+      setError(error.response?.data?.error || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

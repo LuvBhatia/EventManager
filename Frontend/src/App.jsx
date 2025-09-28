@@ -11,6 +11,7 @@ import ClubTopics from './pages/ClubTopics';
 import ClubAdminDashboard from './pages/ClubAdminDashboard';
 import ActiveEvents from './pages/ActiveEvents';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import SuperAdminLogin from './pages/SuperAdminLogin';
 import ViewIdeas from "./pages/ViewIdeas";
 import Leaderboard from "./pages/Leaderboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/events/:eventId/ideas" element={<ProtectedRoute><ViewIdeas /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<ProtectedRoute><ClubAdminDashboard /></ProtectedRoute>} />
         <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+        <Route path="/superadmin/login" element={<SuperAdminLogin />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/problems" element={<Problems />} />
