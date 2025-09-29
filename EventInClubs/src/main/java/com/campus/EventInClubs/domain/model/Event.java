@@ -75,6 +75,10 @@ public class Event {
     @JoinColumn(name = "organizer_id", nullable = false)
     private User organizer;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hall_id")
+    private Hall hall;
+    
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<EventRegistration> registrations;
     
@@ -92,6 +96,25 @@ public class Event {
     @Builder.Default
     private Boolean isActive = true;
     
+    // Approval workflow fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status")
+    @Builder.Default
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+    
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
+    
+    @Column(name = "approval_date")
+    private LocalDateTime approvalDate;
+    
+    @Column(name = "submitted_for_approval_date")
+    private LocalDateTime submittedForApprovalDate;
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -101,12 +124,21 @@ public class Event {
     private LocalDateTime updatedAt;
     
     public enum EventStatus {
-        DRAFT,          // Event is being planned
-        PUBLISHED,      // Event is published and accepting registrations
+        DRAFT,              // Event is being planned by Club Admin
+        PENDING_APPROVAL,   // Submitted by Club Admin, waiting for Super Admin approval
+        APPROVED,           // Approved by Super Admin, visible to students
+        REJECTED,           // Rejected by Super Admin, back to Club Admin for revision
+        PUBLISHED,          // Legacy status, same as APPROVED
         REGISTRATION_CLOSED, // Registration deadline passed
-        ONGOING,        // Event is currently happening
-        COMPLETED,      // Event finished successfully
-        CANCELLED       // Event was cancelled
+        ONGOING,            // Event is currently happening
+        COMPLETED,          // Event finished successfully
+        CANCELLED           // Event was cancelled
+    }
+    
+    public enum ApprovalStatus {
+        PENDING,
+        APPROVED,
+        REJECTED
     }
     
     public enum EventType {

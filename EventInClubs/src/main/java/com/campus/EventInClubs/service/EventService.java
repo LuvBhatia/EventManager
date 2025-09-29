@@ -2,12 +2,14 @@ package com.campus.EventInClubs.service;
 
 import com.campus.EventInClubs.domain.model.Club;
 import com.campus.EventInClubs.domain.model.Event;
+import com.campus.EventInClubs.domain.model.Hall;
 import com.campus.EventInClubs.domain.model.Idea;
 import com.campus.EventInClubs.domain.model.User;
 import com.campus.EventInClubs.dto.EventDto;
 import com.campus.EventInClubs.repository.ClubRepository;
 import com.campus.EventInClubs.repository.EventRepository;
 import com.campus.EventInClubs.repository.EventRegistrationRepository;
+import com.campus.EventInClubs.repository.HallRepository;
 import com.campus.EventInClubs.repository.IdeaRepository;
 import com.campus.EventInClubs.repository.UserRepository;
 import com.campus.EventInClubs.repository.VoteRepository;
@@ -34,6 +36,7 @@ public class EventService {
     private final EventRegistrationRepository eventRegistrationRepository;
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
+    private final HallRepository hallRepository;
     
     public List<EventDto> getAllEvents() {
         return eventRepository.findAll().stream()
@@ -411,15 +414,23 @@ public class EventService {
                 .createdAt(event.getCreatedAt())
                 .updatedAt(event.getUpdatedAt())
                 .totalVotes(totalVotes)
-                .isExpired(eventCleanupService.isEventExpired(event))
-                .isViewOnly(eventCleanupService.isEventInViewOnlyMode(event))
-                .build();
+            .isExpired(eventCleanupService.isEventExpired(event))
+            .isViewOnly(eventCleanupService.isEventInViewOnlyMode(event))
+            .hallId(event.getHall() != null ? event.getHall().getId() : null)
+            .hallName(event.getHall() != null ? event.getHall().getName() : null)
+            .hallCapacity(event.getHall() != null ? event.getHall().getSeatingCapacity() : null)
+            .approvalStatus(event.getApprovalStatus())
+            .rejectionReason(event.getRejectionReason())
+            .approvedById(event.getApprovedBy() != null ? event.getApprovedBy().getId() : null)
+            .approvedByName(event.getApprovedBy() != null ? event.getApprovedBy().getName() : null)
+            .approvalDate(event.getApprovalDate())
+            .submittedForApprovalDate(event.getSubmittedForApprovalDate())
+            .build();
     }
     
     public EventDto updateEventStatus(Long eventId, String status) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
-        
         try {
             Event.EventStatus eventStatus = Event.EventStatus.valueOf(status.toUpperCase());
             event.setStatus(eventStatus);
@@ -437,7 +448,8 @@ public class EventService {
                                        String startDateTime, String endDateTime, String location,
                                        Integer maxParticipants, Double registrationFee, 
                                        String description,
-                                       org.springframework.web.multipart.MultipartFile poster) {
+                                       org.springframework.web.multipart.MultipartFile poster,
+                                       Long hallId) {
         
         // Get the original proposal/event
         Event originalEvent = eventRepository.findById(proposalId)
@@ -459,6 +471,25 @@ public class EventService {
             originalEvent.setDescription(description);
             originalEvent.setStatus(Event.EventStatus.PUBLISHED);
             originalEvent.setUpdatedAt(java.time.LocalDateTime.now());
+            
+            // Assign hall if provided
+            if (hallId != null) {
+                Hall hall = hallRepository.findById(hallId)
+                        .orElseThrow(() -> new RuntimeException("Hall not found with id: " + hallId));
+                
+                // Verify hall is available for the event time
+                if (maxParticipants != null && hall.getSeatingCapacity() < maxParticipants) {
+                    throw new RuntimeException("Selected hall capacity (" + hall.getSeatingCapacity() + 
+                                             ") is insufficient for the number of participants (" + maxParticipants + ")");
+                }
+                
+                originalEvent.setHall(hall);
+                // Set location from hall if not provided
+                if (location == null || location.trim().isEmpty()) {
+                    originalEvent.setLocation(hall.getName() + " - " + hall.getLocation());
+                }
+                log.info("Assigned hall '{}' to event '{}'", hall.getName(), eventName);
+            }
             
             // Handle poster upload if provided
             if (poster != null && !poster.isEmpty()) {
@@ -538,5 +569,154 @@ public class EventService {
         }
         
         log.info("Marked {} approved events as inactive", publishedEvents.size());
+    }
+    
+    // New approval workflow methods
+    
+    @Transactional
+    public EventDto submitEventForApproval(Long eventId, Long hallId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+        
+        // Validate that event has all required fields
+        if (event.getTitle() == null || event.getTitle().trim().isEmpty()) {
+            throw new RuntimeException("Event title is required");
+        }
+        if (event.getStartDate() == null || event.getEndDate() == null) {
+            throw new RuntimeException("Event start and end dates are required");
+        }
+        if (event.getMaxParticipants() == null) {
+            throw new RuntimeException("Maximum participants is required");
+        }
+        
+        // Assign hall if provided
+        if (hallId != null) {
+            Hall hall = hallRepository.findById(hallId)
+                    .orElseThrow(() -> new RuntimeException("Hall not found with id: " + hallId));
+            
+            // Verify hall capacity
+            if (hall.getSeatingCapacity() < event.getMaxParticipants()) {
+                throw new RuntimeException("Selected hall capacity is insufficient for the number of participants");
+            }
+            
+            event.setHall(hall);
+            // Set location from hall
+            event.setLocation(hall.getName() + " - " + hall.getLocation());
+        }
+        
+        // Update status and approval fields
+        event.setStatus(Event.EventStatus.PENDING_APPROVAL);
+        event.setApprovalStatus(Event.ApprovalStatus.PENDING);
+        event.setSubmittedForApprovalDate(LocalDateTime.now());
+        event.setRejectionReason(null); // Clear any previous rejection reason
+        
+        Event savedEvent = eventRepository.save(event);
+        
+        log.info("Event '{}' submitted for approval by club admin", event.getTitle());
+        
+        return convertToDto(savedEvent);
+    }
+    
+    @Transactional
+    public EventDto approveEvent(Long eventId, Long superAdminId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+        
+        if (event.getStatus() != Event.EventStatus.PENDING_APPROVAL) {
+            throw new RuntimeException("Event is not pending approval");
+        }
+        
+        User superAdmin = userRepository.findById(superAdminId)
+                .orElseThrow(() -> new RuntimeException("Super admin not found"));
+        
+        // Update approval status
+        event.setStatus(Event.EventStatus.APPROVED);
+        event.setApprovalStatus(Event.ApprovalStatus.APPROVED);
+        event.setApprovedBy(superAdmin);
+        event.setApprovalDate(LocalDateTime.now());
+        event.setRejectionReason(null);
+        
+        Event savedEvent = eventRepository.save(event);
+        
+        // Send notification to club admin
+        notificationService.createNotification(
+                event.getOrganizer().getId(),
+                "Event Approved",
+                String.format("Your event '%s' has been approved by Super Admin and is now visible to students!", event.getTitle()),
+                com.campus.EventInClubs.domain.model.Notification.NotificationType.SYSTEM,
+                event.getId(),
+                "EVENT"
+        );
+        
+        log.info("Event '{}' approved by Super Admin {}", event.getTitle(), superAdmin.getName());
+        
+        return convertToDto(savedEvent);
+    }
+    
+    @Transactional
+    public EventDto rejectEvent(Long eventId, Long superAdminId, String rejectionReason) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+        
+        if (event.getStatus() != Event.EventStatus.PENDING_APPROVAL) {
+            throw new RuntimeException("Event is not pending approval");
+        }
+        
+        if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
+            throw new RuntimeException("Rejection reason is required");
+        }
+        
+        User superAdmin = userRepository.findById(superAdminId)
+                .orElseThrow(() -> new RuntimeException("Super admin not found"));
+        
+        // Update rejection status
+        event.setStatus(Event.EventStatus.REJECTED);
+        event.setApprovalStatus(Event.ApprovalStatus.REJECTED);
+        event.setRejectionReason(rejectionReason);
+        event.setApprovedBy(superAdmin);
+        event.setApprovalDate(LocalDateTime.now());
+        
+        Event savedEvent = eventRepository.save(event);
+        
+        // Send notification to club admin
+        notificationService.createNotification(
+                event.getOrganizer().getId(),
+                "Event Rejected",
+                String.format("Your event '%s' has been rejected. Reason: %s", event.getTitle(), rejectionReason),
+                com.campus.EventInClubs.domain.model.Notification.NotificationType.SYSTEM,
+                event.getId(),
+                "EVENT"
+        );
+        
+        log.info("Event '{}' rejected by Super Admin {} with reason: {}", 
+                event.getTitle(), superAdmin.getName(), rejectionReason);
+        
+        return convertToDto(savedEvent);
+    }
+    
+    public List<EventDto> getPendingApprovalEvents() {
+        return eventRepository.findAll().stream()
+                .filter(event -> event.getStatus() == Event.EventStatus.PENDING_APPROVAL)
+                .filter(event -> event.getIsActive() == null || event.getIsActive())
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    public List<EventDto> getApprovedEventsForStudents() {
+        return eventRepository.findAll().stream()
+                .filter(event -> event.getStatus() == Event.EventStatus.APPROVED || event.getStatus() == Event.EventStatus.PUBLISHED)
+                .filter(event -> event.getIsActive() == null || event.getIsActive())
+                .filter(event -> event.getStartDate() != null && event.getStartDate().isAfter(LocalDateTime.now())) // Only future events
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    public List<EventDto> getRejectedEventsForClubAdmin(Long clubId) {
+        return eventRepository.findAll().stream()
+                .filter(event -> event.getStatus() == Event.EventStatus.REJECTED)
+                .filter(event -> event.getClub().getId().equals(clubId))
+                .filter(event -> event.getIsActive() == null || event.getIsActive())
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 }

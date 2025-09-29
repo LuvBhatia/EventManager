@@ -298,7 +298,8 @@ public class EventController {
             @RequestParam(value = "maxParticipants", required = false) Integer maxParticipants,
             @RequestParam(value = "registrationFee", required = false, defaultValue = "0") Double registrationFee,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "poster", required = false) org.springframework.web.multipart.MultipartFile poster) {
+            @RequestParam(value = "poster", required = false) org.springframework.web.multipart.MultipartFile poster,
+            @RequestParam(value = "hallId", required = false) Long hallId) {
         
         try {
             log.info("Approving event proposal with parameters:");
@@ -312,11 +313,12 @@ public class EventController {
             log.info("registrationFee: {}", registrationFee);
             log.info("description: {}", description);
             log.info("poster: {}", poster != null ? poster.getOriginalFilename() : "null");
+            log.info("hallId: {}", hallId);
             
             EventDto approvedEvent = eventService.approveEventProposal(
                 proposalId, eventName, eventType, startDateTime, endDateTime,
                 location, maxParticipants, registrationFee, 
-                description, poster
+                description, poster, hallId
             );
             return ResponseEntity.ok(approvedEvent);
         } catch (RuntimeException e) {
@@ -339,6 +341,109 @@ public class EventController {
             log.error("Error marking approved events as inactive: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(java.util.Map.of("error", "Internal server error: " + e.getMessage()));
+        }
+    }
+    
+    // New approval workflow endpoints
+    
+    @PostMapping("/submit-for-approval")
+    public ResponseEntity<?> submitEventForApproval(
+            @RequestParam("eventId") Long eventId,
+            @RequestParam(value = "hallId", required = false) Long hallId) {
+        
+        try {
+            log.info("Submitting event {} for approval with hall {}", eventId, hallId);
+            
+            EventDto submittedEvent = eventService.submitEventForApproval(eventId, hallId);
+            return ResponseEntity.ok(submittedEvent);
+            
+        } catch (RuntimeException e) {
+            log.error("Error submitting event for approval: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error submitting event for approval: {}", eventId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @PostMapping("/approve/{eventId}")
+    public ResponseEntity<?> approveEvent(
+            @PathVariable Long eventId,
+            @RequestParam("superAdminId") Long superAdminId) {
+        
+        try {
+            log.info("Super Admin {} approving event {}", superAdminId, eventId);
+            
+            EventDto approvedEvent = eventService.approveEvent(eventId, superAdminId);
+            return ResponseEntity.ok(approvedEvent);
+            
+        } catch (RuntimeException e) {
+            log.error("Error approving event: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error approving event: {}", eventId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @PostMapping("/reject/{eventId}")
+    public ResponseEntity<?> rejectEvent(
+            @PathVariable Long eventId,
+            @RequestParam("superAdminId") Long superAdminId,
+            @RequestParam("rejectionReason") String rejectionReason) {
+        
+        try {
+            log.info("Super Admin {} rejecting event {} with reason: {}", 
+                    superAdminId, eventId, rejectionReason);
+            
+            EventDto rejectedEvent = eventService.rejectEvent(eventId, superAdminId, rejectionReason);
+            return ResponseEntity.ok(rejectedEvent);
+            
+        } catch (RuntimeException e) {
+            log.error("Error rejecting event: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error rejecting event: {}", eventId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @GetMapping("/pending-approval")
+    public ResponseEntity<List<EventDto>> getPendingApprovalEvents() {
+        try {
+            List<EventDto> pendingEvents = eventService.getPendingApprovalEvents();
+            return ResponseEntity.ok(pendingEvents);
+        } catch (Exception e) {
+            log.error("Error getting pending approval events", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/approved-for-students")
+    public ResponseEntity<List<EventDto>> getApprovedEventsForStudents() {
+        try {
+            List<EventDto> approvedEvents = eventService.getApprovedEventsForStudents();
+            return ResponseEntity.ok(approvedEvents);
+        } catch (Exception e) {
+            log.error("Error getting approved events for students", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/rejected/{clubId}")
+    public ResponseEntity<List<EventDto>> getRejectedEventsForClubAdmin(@PathVariable Long clubId) {
+        try {
+            List<EventDto> rejectedEvents = eventService.getRejectedEventsForClubAdmin(clubId);
+            return ResponseEntity.ok(rejectedEvents);
+        } catch (Exception e) {
+            log.error("Error getting rejected events for club {}", clubId, e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

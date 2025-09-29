@@ -45,6 +45,22 @@ public class EventDto {
     // Vote information
     private Integer totalVotes;
     
+    // Hall information
+    private Long hallId;
+    private String hallName;
+    private Integer hallCapacity;
+    
+    // Approval workflow information
+    private Event.ApprovalStatus approvalStatus;
+    private String rejectionReason;
+    private Long approvedById;
+    private String approvedByName;
+    private LocalDateTime approvalDate;
+    private LocalDateTime submittedForApprovalDate;
+    
+    // Proposal information
+    private Long proposalId;
+    
     // Helper method to check if registration is open
     public boolean isRegistrationOpen() {
         return status == Event.EventStatus.PUBLISHED && 

@@ -289,3 +289,37 @@
     border-color: rgba(75, 85, 99, 0.8);
   }
 }
+
+/* Hall Selection Styles */
+.hall-message {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hall-message.success-text {
+  color: #10b981;
+}
+
+.hall-message.error-text {
+  color: #ef4444;
+}
+
+select[disabled] {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+select option {
+  padding: 8px;
+}
+
+.form-group select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 32px;
+}
