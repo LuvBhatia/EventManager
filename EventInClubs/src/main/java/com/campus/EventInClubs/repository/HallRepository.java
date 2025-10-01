@@ -16,49 +16,51 @@ public interface HallRepository extends JpaRepository<Hall, Long> {
     
     List<Hall> findBySeatingCapacityGreaterThanEqualAndIsActiveTrueOrderBySeatingCapacityAsc(Integer capacity);
     
-    @Query("SELECT h FROM Hall h WHERE h.isActive = true " +
-           "AND h.seatingCapacity >= :requiredCapacity " +
+    @Query(value = "SELECT h.* FROM halls h WHERE h.is_active = true " +
+           "AND h.seating_capacity >= :requiredCapacity " +
            "AND h.id NOT IN (" +
-           "    SELECT DISTINCT e.hall.id FROM Event e " +
-           "    WHERE e.hall IS NOT NULL " +
+           "    SELECT DISTINCT e.hall_id FROM events e " +
+           "    WHERE e.hall_id IS NOT NULL " +
            "    AND e.status NOT IN ('CANCELLED', 'COMPLETED') " +
-           "    AND e.approvalStatus = 'APPROVED' " +
+           "    AND e.approval_status = 'APPROVED' " +
            "    AND ((" +
-           "        e.startDate <= :endTime AND e.endDate >= :startTime" +
+           "        (e.start_date - INTERVAL '2 hours') <= :endTime AND " +
+           "        (e.end_date + INTERVAL '2 hours') >= :startTime" +
            "    ) OR (" +
-           "        e.startDate IS NULL OR e.endDate IS NULL" +
+           "        e.start_date IS NULL OR e.end_date IS NULL" +
            "    ))" +
            ") " +
            "ORDER BY " +
            "CASE " +
-           "    WHEN h.seatingCapacity <= :requiredCapacity + 20 THEN 1 " +
+           "    WHEN h.seating_capacity <= :requiredCapacity + 20 THEN 1 " +
            "    ELSE 2 " +
            "END, " +
-           "h.seatingCapacity ASC")
+           "h.seating_capacity ASC", nativeQuery = true)
     List<Hall> findAvailableHalls(@Param("requiredCapacity") Integer requiredCapacity,
                                   @Param("startTime") LocalDateTime startTime,
                                   @Param("endTime") LocalDateTime endTime);
     
-    @Query("SELECT h FROM Hall h WHERE h.isActive = true " +
-           "AND h.seatingCapacity >= :requiredCapacity " +
+    @Query(value = "SELECT h.* FROM halls h WHERE h.is_active = true " +
+           "AND h.seating_capacity >= :requiredCapacity " +
            "AND h.id NOT IN (" +
-           "    SELECT DISTINCT e.hall.id FROM Event e " +
-           "    WHERE e.hall IS NOT NULL " +
+           "    SELECT DISTINCT e.hall_id FROM events e " +
+           "    WHERE e.hall_id IS NOT NULL " +
            "    AND e.status NOT IN ('CANCELLED', 'COMPLETED') " +
-           "    AND e.approvalStatus = 'APPROVED' " +
+           "    AND e.approval_status = 'APPROVED' " +
            "    AND e.id != :excludeEventId " +
            "    AND ((" +
-           "        e.startDate <= :endTime AND e.endDate >= :startTime" +
+           "        (e.start_date - INTERVAL '2 hours') <= :endTime AND " +
+           "        (e.end_date + INTERVAL '2 hours') >= :startTime" +
            "    ) OR (" +
-           "        e.startDate IS NULL OR e.endDate IS NULL" +
+           "        e.start_date IS NULL OR e.end_date IS NULL" +
            "    ))" +
            ") " +
            "ORDER BY " +
            "CASE " +
-           "    WHEN h.seatingCapacity <= :requiredCapacity + 20 THEN 1 " +
+           "    WHEN h.seating_capacity <= :requiredCapacity + 20 THEN 1 " +
            "    ELSE 2 " +
            "END, " +
-           "h.seatingCapacity ASC")
+           "h.seating_capacity ASC", nativeQuery = true)
     List<Hall> findAvailableHallsExcludingEvent(@Param("requiredCapacity") Integer requiredCapacity,
                                                 @Param("startTime") LocalDateTime startTime,
                                                 @Param("endTime") LocalDateTime endTime,

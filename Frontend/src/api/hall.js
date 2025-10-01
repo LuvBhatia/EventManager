@@ -36,7 +36,10 @@ export const hallApi = {
         params.excludeEventId = excludeEventId;
       }
 
+      console.log('🔍 Fetching available halls with params:', params);
       const response = await httpClient.get('/halls/available', { params });
+      console.log('✅ Received halls:', response.data.length, 'halls');
+      console.log('📋 Hall details:', response.data.map(h => `${h.name} (ID: ${h.id})`));
       return response.data;
     } catch (error) {
       console.error('Error fetching available halls:', error);

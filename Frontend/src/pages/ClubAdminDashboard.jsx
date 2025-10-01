@@ -735,8 +735,8 @@ export default function ClubAdminDashboard() {
               <div className="proposal-title-section">
                 <h3>{proposal.title}</h3>
               </div>
-              <span className={`status ${proposal.status}`}>
-                {proposal.status}
+              <span className={`status ${proposal.status === 'PUBLISHED' && proposal.approvalStatus === 'APPROVED' ? 'APPROVED' : proposal.status}`}>
+                {proposal.status === 'PUBLISHED' && proposal.approvalStatus === 'APPROVED' ? 'APPROVED' : proposal.status}
               </span>
             </div>
             <div className="proposal-meta">
@@ -797,25 +797,30 @@ export default function ClubAdminDashboard() {
                   ❌ Rejected
                 </span>
               )}
-              
-              {/* Only show Approve button if NOT already pending approval or approved */}
-              {proposal.status !== 'PENDING_APPROVAL' && proposal.status !== 'APPROVED' && (
-                <button 
-                  className="btn-success"
-                  onClick={() => handleApproveProposal(proposal)}
-                >
-                  ✅ Approve
-                </button>
+              {/* Only show Approved badge if status is PUBLISHED AND approvalStatus is APPROVED */}
+              {proposal.status === 'PUBLISHED' && proposal.approvalStatus === 'APPROVED' && (
+                <span className="status-badge approved" title="Approved by Super Admin">
+                  ✅ Approved
+                </span>
               )}
               
-              {/* Only show Reject button if NOT already approved */}
-              {proposal.status !== 'APPROVED' && (
-                <button 
-                  className="btn-danger"
-                  onClick={() => handleRejectProposal(proposal.id)}
-                >
-                  ❌ Reject
-                </button>
+              {/* Only show Approve and Reject buttons if NOT approved by super admin */}
+              {proposal.approvalStatus !== 'APPROVED' && (
+                <>
+                  <button 
+                    className="btn-success"
+                    onClick={() => handleApproveProposal(proposal)}
+                  >
+                    ✅ Approve
+                  </button>
+                  
+                  <button 
+                    className="btn-danger"
+                    onClick={() => handleRejectProposal(proposal.id)}
+                  >
+                    ❌ Reject
+                  </button>
+                </>
               )}
             </div>
           </div>

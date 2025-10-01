@@ -41,13 +41,18 @@ public class HallService {
             return List.of();
         }
         
+        // Calculate buffer times for logging
+        LocalDateTime bufferStart = startTime.minusHours(2);
+        LocalDateTime bufferEnd = endTime.plusHours(2);
+        log.info("Checking hall availability with 2-hour buffer: {} to {}", bufferStart, bufferEnd);
+        
         List<Hall> availableHalls = hallRepository.findAvailableHalls(requiredCapacity, startTime, endTime);
         log.info("Found {} available halls for capacity {}", availableHalls.size(), requiredCapacity);
         
         // Debug: Log each hall's capacity
         for (Hall hall : availableHalls) {
-            log.info("Hall: {} - Capacity: {} (Required: {})", 
-                    hall.getName(), hall.getSeatingCapacity(), requiredCapacity);
+            log.info("Available Hall: {} (ID: {}) - Capacity: {} (Required: {})", 
+                    hall.getName(), hall.getId(), hall.getSeatingCapacity(), requiredCapacity);
         }
         
         return availableHalls;
