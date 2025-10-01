@@ -566,7 +566,7 @@ public class EventService {
         } catch (java.time.format.DateTimeParseException e) {
             log.error("DateTime parse error - start: '{}', end: '{}'", startDateTime, endDateTime, e);
             throw new RuntimeException(String.format(
-                "Invalid date-time format. Received start: '%s', end: '%s'. Error: %s', 
+                "Invalid date-time format. Received start: '%s', end: '%s'. Error: %s",
                 startDateTime, endDateTime, e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.error("Invalid event type: {}", eventType, e);
@@ -619,6 +619,24 @@ public class EventService {
         }
         
         log.info("Marked {} approved events as inactive", publishedEvents.size());
+    }
+    
+    @Transactional
+    public void deleteEventByTitle(String title) {
+        List<Event> events = eventRepository.findAll().stream()
+                .filter(event -> event.getTitle() != null && event.getTitle().equalsIgnoreCase(title))
+                .collect(java.util.stream.Collectors.toList());
+        
+        if (events.isEmpty()) {
+            throw new RuntimeException("Event not found with title: " + title);
+        }
+        
+        for (Event event : events) {
+            log.info("Deleting event: {} (ID: {})", event.getTitle(), event.getId());
+            eventRepository.delete(event);
+        }
+        
+        log.info("Deleted {} event(s) with title: {}", events.size(), title);
     }
     
     // New approval workflow methods
@@ -757,6 +775,24 @@ public class EventService {
                 .filter(event -> event.getStatus() == Event.EventStatus.APPROVED || event.getStatus() == Event.EventStatus.PUBLISHED)
                 .filter(event -> event.getIsActive() == null || event.getIsActive())
                 .filter(event -> event.getStartDate() != null && event.getStartDate().isAfter(LocalDateTime.now())) // Only future events
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    public List<EventDto> getApprovedEvents() {
+        return eventRepository.findAll().stream()
+                .filter(event -> event.getStatus() == Event.EventStatus.APPROVED || event.getStatus() == Event.EventStatus.PUBLISHED)
+                .filter(event -> event.getApprovalStatus() == Event.ApprovalStatus.APPROVED)
+                .filter(event -> event.getIsActive() == null || event.getIsActive())
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    public List<EventDto> getRejectedEvents() {
+        return eventRepository.findAll().stream()
+                .filter(event -> event.getStatus() == Event.EventStatus.REJECTED)
+                .filter(event -> event.getApprovalStatus() == Event.ApprovalStatus.REJECTED)
+                .filter(event -> event.getIsActive() == null || event.getIsActive())
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }

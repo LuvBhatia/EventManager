@@ -344,6 +344,18 @@ public class EventController {
         }
     }
     
+    @DeleteMapping("/by-title/{title}")
+    public ResponseEntity<?> deleteEventByTitle(@PathVariable String title) {
+        try {
+            eventService.deleteEventByTitle(title);
+            return ResponseEntity.ok(java.util.Map.of("message", "Event deleted successfully: " + title));
+        } catch (Exception e) {
+            log.error("Error deleting event by title: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Error deleting event: " + e.getMessage()));
+        }
+    }
+    
     // New approval workflow endpoints
     
     @PostMapping("/submit-for-approval")
@@ -432,6 +444,28 @@ public class EventController {
             return ResponseEntity.ok(approvedEvents);
         } catch (Exception e) {
             log.error("Error getting approved events for students", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/approved")
+    public ResponseEntity<List<EventDto>> getApprovedEvents() {
+        try {
+            List<EventDto> approvedEvents = eventService.getApprovedEvents();
+            return ResponseEntity.ok(approvedEvents);
+        } catch (Exception e) {
+            log.error("Error getting approved events", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/rejected")
+    public ResponseEntity<List<EventDto>> getRejectedEvents() {
+        try {
+            List<EventDto> rejectedEvents = eventService.getRejectedEvents();
+            return ResponseEntity.ok(rejectedEvents);
+        } catch (Exception e) {
+            log.error("Error getting rejected events", e);
             return ResponseEntity.internalServerError().build();
         }
     }

@@ -3,7 +3,9 @@ import { eventApi } from '../api/event';
 import './SuperAdminApprovalDashboard.css';
 
 const SuperAdminApprovalDashboard = () => {
-  const [pendingEvents, setPendingEvents] = useState([]);
+  const [allEvents, setAllEvents] = useState({ pending: [], approved: [], rejected: [] });
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  const [activeFilter, setActiveFilter] = useState('PENDING');
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -11,19 +13,44 @@ const SuperAdminApprovalDashboard = () => {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    fetchPendingEvents();
+    fetchAllEvents();
   }, []);
 
-  const fetchPendingEvents = async () => {
+  useEffect(() => {
+    filterEvents();
+  }, [activeFilter, allEvents]);
+
+  const fetchAllEvents = async () => {
     try {
       setLoading(true);
-      const events = await eventApi.getPendingEventsForApproval();
-      setPendingEvents(events);
+      const [pending, approved, rejected] = await Promise.all([
+        eventApi.getPendingEventsForApproval(),
+        eventApi.getApprovedEvents(),
+        eventApi.getRejectedEvents()
+      ]);
+      
+      setAllEvents({ pending, approved, rejected });
     } catch (error) {
-      console.error('Error fetching pending events:', error);
-      setPendingEvents([]);
+      console.error('Error fetching events:', error);
+      setAllEvents({ pending: [], approved: [], rejected: [] });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const filterEvents = () => {
+    switch (activeFilter) {
+      case 'PENDING':
+        setFilteredEvents(allEvents.pending || []);
+        break;
+      case 'APPROVED':
+        setFilteredEvents(allEvents.approved || []);
+        break;
+      case 'REJECTED':
+        setFilteredEvents(allEvents.rejected || []);
+        break;
+      default:
+        setFilteredEvents(allEvents.pending || []);
     }
   };
 
@@ -35,8 +62,8 @@ const SuperAdminApprovalDashboard = () => {
       
       await eventApi.approveEvent(eventId, superAdminId);
       
-      // Remove approved event from pending list
-      setPendingEvents(prev => prev.filter(event => event.id !== eventId));
+      // Refresh all events after approval
+      await fetchAllEvents();
       alert('Event approved successfully! The event is now visible to students.');
     } catch (error) {
       console.error('Error approving event:', error);
@@ -65,8 +92,8 @@ const SuperAdminApprovalDashboard = () => {
       
       await eventApi.rejectEvent(selectedEvent.id, superAdminId, rejectionReason);
       
-      // Remove rejected event from pending list
-      setPendingEvents(prev => prev.filter(event => event.id !== selectedEvent.id));
+      // Refresh all events after rejection
+      await fetchAllEvents();
       setShowRejectModal(false);
       setSelectedEvent(null);
       setRejectionReason('');
@@ -97,6 +124,20 @@ const SuperAdminApprovalDashboard = () => {
     );
   }
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'PENDING_APPROVAL':
+        return <span className="status-badge pending">Pending</span>;
+      case 'APPROVED':
+      case 'PUBLISHED':
+        return <span className="status-badge approved">Approved</span>;
+      case 'REJECTED':
+        return <span className="status-badge rejected">Rejected</span>;
+      default:
+        return <span className="status-badge">{status}</span>;
+    }
+  };
+
   return (
     <div className="approval-dashboard">
       <div className="dashboard-header">
@@ -104,18 +145,47 @@ const SuperAdminApprovalDashboard = () => {
         <p>Review and approve/reject events submitted by Club Admins</p>
       </div>
 
-      {pendingEvents.length === 0 ? (
+      {/* Filter Tabs */}
+      <div className="filter-tabs">
+        <button 
+          className={`filter-tab ${activeFilter === 'PENDING' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('PENDING')}
+        >
+          Pending ({allEvents.pending?.length || 0})
+        </button>
+        <button 
+          className={`filter-tab ${activeFilter === 'APPROVED' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('APPROVED')}
+        >
+          Approved ({allEvents.approved?.length || 0})
+        </button>
+        <button 
+          className={`filter-tab ${activeFilter === 'REJECTED' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('REJECTED')}
+        >
+          Rejected ({allEvents.rejected?.length || 0})
+        </button>
+      </div>
+
+      {filteredEvents.length === 0 ? (
         <div className="no-events">
-          <h3>No events pending approval</h3>
-          <p>All submitted events have been processed.</p>
+          <h3>No {activeFilter.toLowerCase()} events</h3>
+          <p>
+            {activeFilter === 'PENDING' && 'All submitted events have been processed.'}
+            {activeFilter === 'APPROVED' && 'No events have been approved yet.'}
+            {activeFilter === 'REJECTED' && 'No events have been rejected yet.'}
+          </p>
         </div>
       ) : (
         <div className="events-grid">
-          {pendingEvents.map(event => (
+          {filteredEvents.map(event => (
             <div key={event.id} className="event-card">
               <div className="event-header">
                 <h3>{event.title}</h3>
-                <span className="event-type">{event.type}</span>
+                <div className="header-badges">
+                  <span className="event-type">{event.type}</span>
+                  {getStatusBadge(event.status)}
+                </div>
               </div>
 
               <div className="event-details">
@@ -164,24 +234,40 @@ const SuperAdminApprovalDashboard = () => {
                   <span className="label">Submitted:</span>
                   <span className="value">{formatDateTime(event.submittedForApprovalDate)}</span>
                 </div>
+
+                {event.rejectionReason && (
+                  <div className="detail-row rejection-reason">
+                    <span className="label">Rejection Reason:</span>
+                    <span className="value">{event.rejectionReason}</span>
+                  </div>
+                )}
+
+                {event.approvalDate && (
+                  <div className="detail-row">
+                    <span className="label">Approval Date:</span>
+                    <span className="value">{formatDateTime(event.approvalDate)}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="event-actions">
-                <button 
-                  className="approve-button"
-                  onClick={() => handleApprove(event.id)}
-                  disabled={processing}
-                >
-                  {processing ? 'Processing...' : 'Approve'}
-                </button>
-                <button 
-                  className="reject-button"
-                  onClick={() => handleRejectClick(event)}
-                  disabled={processing}
-                >
-                  Reject
-                </button>
-              </div>
+              {activeFilter === 'PENDING' && (
+                <div className="event-actions">
+                  <button 
+                    className="approve-button"
+                    onClick={() => handleApprove(event.id)}
+                    disabled={processing}
+                  >
+                    {processing ? 'Processing...' : 'Approve'}
+                  </button>
+                  <button 
+                    className="reject-button"
+                    onClick={() => handleRejectClick(event)}
+                    disabled={processing}
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

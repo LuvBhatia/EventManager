@@ -452,4 +452,32 @@ export const eventApi = {
     
     return response.json();
   },
+
+  // Super Admin: Get all approved events
+  getApprovedEvents: async () => {
+    const response = await fetch(`${API_BASE_URL}/events/approved`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch approved events: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  // Super Admin: Get all rejected events
+  getRejectedEvents: async () => {
+    const response = await fetch(`${API_BASE_URL}/events/rejected`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch rejected events: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
 };
