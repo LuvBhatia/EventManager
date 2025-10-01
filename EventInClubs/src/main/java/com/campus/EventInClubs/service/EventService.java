@@ -566,7 +566,7 @@ public class EventService {
         } catch (java.time.format.DateTimeParseException e) {
             log.error("DateTime parse error - start: '{}', end: '{}'", startDateTime, endDateTime, e);
             throw new RuntimeException(String.format(
-                "Invalid date-time format. Received start: '%s', end: '%s'. Error: %s", 
+                "Invalid date-time format. Received start: '%s', end: '%s'. Error: %s', 
                 startDateTime, endDateTime, e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.error("Invalid event type: {}", eventType, e);

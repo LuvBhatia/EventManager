@@ -1005,6 +1005,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+<<<<<<< HEAD
   align-items: center;
 }
 
@@ -1045,6 +1046,8 @@
   50% {
     opacity: 0.7;
   }
+=======
+>>>>>>> 1b6d357fa7fdfc73c2f66cd97b4499ca20bb4b12
 }
 
 /* Analytics */
