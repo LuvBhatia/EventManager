@@ -1,0 +1,38 @@
+package com.campus.EventInClubs.repository;
+
+import com.campus.EventInClubs.domain.model.EventRegistration;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface EventRegistrationRepository extends JpaRepository<EventRegistration, Long> {
+    
+    // Find all registrations for a specific event
+    List<EventRegistration> findByEventIdOrderByRegisteredAtDesc(Long eventId);
+    
+    // Find registration by event and user
+    Optional<EventRegistration> findByEventIdAndUserId(Long eventId, Long userId);
+    
+    // Count total registrations for an event
+    @Query("SELECT COUNT(er) FROM EventRegistration er WHERE er.event.id = :eventId AND er.status = 'REGISTERED'")
+    Long countRegisteredByEventId(@Param("eventId") Long eventId);
+    
+    // Count registrations by status for an event
+    @Query("SELECT COUNT(er) FROM EventRegistration er WHERE er.event.id = :eventId AND er.status = :status")
+    Long countByEventIdAndStatus(@Param("eventId") Long eventId, @Param("status") EventRegistration.RegistrationStatus status);
+    
+    // Find all registrations for a user
+    List<EventRegistration> findByUserIdOrderByRegisteredAtDesc(Long userId);
+    
+    // Check if user is registered for an event
+    boolean existsByEventIdAndUserIdAndStatus(Long eventId, Long userId, EventRegistration.RegistrationStatus status);
+    
+    // Get registrations with payment status
+    @Query("SELECT er FROM EventRegistration er WHERE er.event.id = :eventId AND er.paymentStatus = :paymentStatus")
+    List<EventRegistration> findByEventIdAndPaymentStatus(@Param("eventId") Long eventId, @Param("paymentStatus") EventRegistration.PaymentStatus paymentStatus);
+}
