@@ -15,15 +15,53 @@ const RejectedEventsPanel = ({ clubId }) => {
   const fetchRejectedEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/events/rejected/${clubId}`, {
-        credentials: 'include'
+      console.log('=== Fetching Rejected Events ===');
+      console.log('Club ID:', clubId);
+      
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      console.log('Request URL:', `http://localhost:8080/api/events/rejected/${clubId}`);
+      console.log('Headers:', headers);
+      
+      const response = await fetch(`http://localhost:8080/api/events/rejected/${clubId}`, {
+        credentials: 'include',
+        headers: headers
       });
+      
+      console.log('Response status:', response.status);
       
       if (response.ok) {
         const events = await response.json();
+        console.log('Rejected events fetched for club', clubId, ':', events);
+        console.log('Number of rejected events:', events.length);
+        
+        // If no events for this club, try fetching all rejected events to debug
+        if (events.length === 0) {
+          console.log('No rejected events for this club. Fetching all rejected events for debugging...');
+          const allResponse = await fetch('http://localhost:8080/api/events/rejected', {
+            credentials: 'include',
+            headers: headers
+          });
+          
+          if (allResponse.ok) {
+            const allEvents = await allResponse.json();
+            console.log('All rejected events in system:', allEvents);
+            console.log('Their club IDs:', allEvents.map(e => ({ id: e.id, title: e.title, clubId: e.clubId, clubName: e.clubName })));
+          }
+        }
+        
         setRejectedEvents(events);
       } else {
-        console.error('Failed to fetch rejected events');
+        console.error('Failed to fetch rejected events. Status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Error fetching rejected events:', error);
@@ -39,48 +77,47 @@ const RejectedEventsPanel = ({ clubId }) => {
 
   const handleResubmitEvent = async (eventData) => {
     try {
-      // First update the event with new details
-      const updateResponse = await fetch(`/api/events/${selectedEvent.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: eventData.title,
-          description: eventData.description,
-          type: eventData.type,
-          startDate: eventData.startDateTime,
-          endDate: eventData.endDateTime,
-          maxParticipants: eventData.maxParticipants,
-          registrationFee: eventData.registrationFee,
-        }),
-        credentials: 'include'
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update event');
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Then submit for approval with hall selection
-      const submitResponse = await fetch('/api/events/submit-for-approval', {
+      // Use the resubmit endpoint with all the updated event data
+      const params = new URLSearchParams({
+        eventId: selectedEvent.id.toString(),
+        eventName: eventData.title,
+        eventType: eventData.type,
+        startDateTime: eventData.startDateTime,
+        endDateTime: eventData.endDateTime,
+        maxParticipants: eventData.maxParticipants.toString(),
+        registrationFee: (eventData.registrationFee || 0).toString()
+      });
+      
+      if (eventData.description) {
+        params.append('description', eventData.description);
+      }
+      
+      if (eventData.hallId) {
+        params.append('hallId', eventData.hallId.toString());
+      }
+
+      const submitResponse = await fetch(`http://localhost:8080/api/events/resubmit-rejected?${params.toString()}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          eventId: selectedEvent.id,
-          hallId: eventData.hallId || ''
-        }),
+        headers: headers,
         credentials: 'include'
       });
 
       if (submitResponse.ok) {
-        alert('Event resubmitted successfully!');
+        alert('Event resubmitted successfully! It will be reviewed by the Super Admin.');
         setShowEditModal(false);
         setSelectedEvent(null);
         fetchRejectedEvents(); // Refresh the list
       } else {
-        const error = await submitResponse.json();
+        const error = await submitResponse.json().catch(() => ({}));
         throw new Error(error.error || 'Failed to resubmit event');
       }
     } catch (error) {

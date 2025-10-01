@@ -4,6 +4,7 @@ import './ClubAdminDashboard.css';
 import ClubRegistrationModal from '../components/ClubRegistrationModal';
 import EventManagementModal from '../components/EventManagementModal';
 import EventApprovalModal from '../components/EventApprovalModal';
+import RejectedEventsPanel from '../components/RejectedEventsPanel';
 import { clubApi } from '../api/club';
 import { eventApi } from '../api/event.js';
 
@@ -15,6 +16,7 @@ export default function ClubAdminDashboard() {
   const [proposals, setProposals] = useState([]);
   const [events, setEvents] = useState([]);
   const [activeEvents, setActiveEvents] = useState([]);
+  const [rejectedEvents, setRejectedEvents] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
@@ -27,7 +29,7 @@ export default function ClubAdminDashboard() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'clubs', 'proposals', 'events', 'active-events', 'analytics'].includes(tabParam)) {
+    if (tabParam && ['overview', 'clubs', 'proposals', 'events', 'active-events', 'rejected-events', 'analytics'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [location.search]);
@@ -40,6 +42,14 @@ export default function ClubAdminDashboard() {
     fetchActiveEvents();
     fetchNotifications();
   }, []);
+  
+  // Fetch rejected events after clubs are loaded
+  useEffect(() => {
+    if (clubs.length > 0) {
+      console.log('Clubs loaded, fetching rejected events for clubs:', clubs);
+      fetchRejectedEvents(clubs);
+    }
+  }, [clubs]);
 
   // Set up periodic refresh to check for expired proposals
   useEffect(() => {
@@ -277,6 +287,61 @@ export default function ClubAdminDashboard() {
         }
       ];
       setEvents(mockEvents);
+    }
+  };
+
+  const fetchRejectedEvents = async (userClubs) => {
+    try {
+      console.log('=== Fetching Rejected Events ===');
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        console.log('No userId found');
+        return;
+      }
+      
+      if (!userClubs || userClubs.length === 0) {
+        console.log('No clubs provided to filter');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      console.log('Fetching all rejected events...');
+      
+      // Fetch ALL rejected events
+      const response = await fetch('http://localhost:8080/api/events/rejected', {
+        headers: headers
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (response.ok) {
+        const allRejectedEvents = await response.json();
+        
+        // Filter to show only events from clubs the user manages
+        const userClubIds = userClubs.map(club => club.id);
+        const userRejectedEvents = allRejectedEvents.filter(event => 
+          userClubIds.includes(event.clubId)
+        );
+        
+        console.log('All rejected events:', allRejectedEvents);
+        console.log('User club IDs:', userClubIds);
+        console.log('User rejected events:', userRejectedEvents);
+        
+        setRejectedEvents(userRejectedEvents);
+      } else {
+        console.error('Failed to fetch rejected events');
+      }
+    } catch (error) {
+      console.error('Error fetching rejected events:', error);
+      setRejectedEvents([]);
     }
   };
 
@@ -536,6 +601,18 @@ export default function ClubAdminDashboard() {
             <p>Engagement Rate</p>
           </div>
         </div>
+        
+        {rejectedEvents.length > 0 && (
+          <div className="stat-card rejected-stat" onClick={() => setActiveTab('rejected-events')} style={{cursor: 'pointer'}}>
+            <div className="stat-icon">
+              ❌
+            </div>
+            <div className="stat-content">
+              <h3>{rejectedEvents.length}</h3>
+              <p>Rejected Events</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="recent-activity">
@@ -804,8 +881,8 @@ export default function ClubAdminDashboard() {
                 </span>
               )}
               
-              {/* Only show Approve and Reject buttons if NOT approved by super admin */}
-              {proposal.approvalStatus !== 'APPROVED' && (
+              {/* Only show Approve and Reject buttons if NOT approved by super admin and NOT pending approval */}
+              {proposal.approvalStatus !== 'APPROVED' && proposal.status !== 'PENDING_APPROVAL' && (
                 <>
                   <button 
                     className="btn-success"
@@ -847,6 +924,95 @@ export default function ClubAdminDashboard() {
       </div>
     </div>
   );
+
+  const renderRejectedEvents = () => {
+    return (
+      <div className="rejected-events-section">
+        {rejectedEvents.length === 0 ? (
+          <div className="no-events">
+            <h3>No rejected events</h3>
+            <p>All your submitted events are either approved or pending review.</p>
+          </div>
+        ) : (
+          <div className="events-list">
+            {rejectedEvents.map(event => (
+              <div key={event.id} className="rejected-event-card">
+                <div className="event-header">
+                  <div className="event-title-section">
+                    <h3>{event.title}</h3>
+                    <span className="event-type">{event.type}</span>
+                  </div>
+                  <div className="rejection-date">
+                    Rejected on {event.approvalDate ? new Date(event.approvalDate).toLocaleString() : 'N/A'}
+                  </div>
+                </div>
+
+                <div className="event-details">
+                  <div className="detail-row">
+                    <span className="label">Club:</span>
+                    <span className="value">{event.clubName}</span>
+                  </div>
+                  
+                  <div className="detail-row">
+                    <span className="label">Date & Time:</span>
+                    <span className="value">
+                      {event.startDate ? new Date(event.startDate).toLocaleString() : 'N/A'} - {event.endDate ? new Date(event.endDate).toLocaleString() : 'N/A'}
+                    </span>
+                  </div>
+
+                  <div className="detail-row">
+                    <span className="label">Participants:</span>
+                    <span className="value">{event.maxParticipants}</span>
+                  </div>
+
+                  <div className="detail-row">
+                    <span className="label">Registration Fee:</span>
+                    <span className="value">₹{event.registrationFee || 0}</span>
+                  </div>
+
+                  {event.hallName && (
+                    <div className="detail-row">
+                      <span className="label">Hall:</span>
+                      <span className="value">{event.hallName} (Capacity: {event.hallCapacity})</span>
+                    </div>
+                  )}
+
+                  {event.description && (
+                    <div className="detail-row">
+                      <span className="label">Description:</span>
+                      <span className="value description">{event.description}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rejection-reason">
+                  <h4>Rejection Reason:</h4>
+                  <div className="reason-text">
+                    {event.rejectionReason}
+                  </div>
+                  <div className="rejected-by">
+                    - {event.approvedByName || 'Super Admin'}
+                  </div>
+                </div>
+
+                <div className="event-actions">
+                  <button 
+                    className="edit-resubmit-button"
+                    onClick={() => {
+                      // TODO: Implement edit and resubmit functionality
+                      alert('Edit & Resubmit functionality coming soon!\n\nYou will be able to:\n1. Edit event details\n2. Update based on feedback\n3. Resubmit for approval');
+                    }}
+                  >
+                    Edit & Resubmit
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderActiveEvents = () => (
     <div className="active-events-section">
@@ -972,6 +1138,8 @@ export default function ClubAdminDashboard() {
         return renderEventManagement();
       case 'active-events':
         return renderActiveEvents();
+      case 'rejected-events':
+        return renderRejectedEvents();
       case 'proposals':
         return renderProposalManagement();
       case 'analytics':
@@ -1024,6 +1192,16 @@ export default function ClubAdminDashboard() {
             <span>Active Events</span>
           </button>
           <button 
+            className={`nav-item ${activeTab === 'rejected-events' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rejected-events')}
+          >
+            <span className="nav-icon">❌</span>
+            <span>Rejected Events</span>
+            {rejectedEvents.length > 0 && (
+              <span className="badge">{rejectedEvents.length}</span>
+            )}
+          </button>
+          <button 
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
@@ -1040,7 +1218,8 @@ export default function ClubAdminDashboard() {
             activeTab === 'clubs' ? 'My Clubs' :
             activeTab === 'proposals' ? 'Event Proposals' :
             activeTab === 'events' ? 'Topics for Ideas' :
-            activeTab === 'active-events' ? 'Active Events' : 'Analytics'
+            activeTab === 'active-events' ? 'Active Events' :
+            activeTab === 'rejected-events' ? 'Rejected Events' : 'Analytics'
           }</h1>
           <div className="header-actions">
             {activeTab === 'clubs' && (

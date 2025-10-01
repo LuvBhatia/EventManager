@@ -433,17 +433,13 @@ export const eventApi = {
 
   // Super Admin: Reject event
   rejectEvent: async (eventId, superAdminId, rejectionReason) => {
-    const response = await fetch(`${API_BASE_URL}/events/reject/${eventId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        ...getAuthHeaders(),
-      },
-      body: new URLSearchParams({
-        superAdminId: superAdminId.toString(),
-        rejectionReason: rejectionReason
-      }),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/events/reject/${eventId}?superAdminId=${superAdminId}&rejectionReason=${encodeURIComponent(rejectionReason)}`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
