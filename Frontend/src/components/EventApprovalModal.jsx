@@ -452,7 +452,7 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
     <div className="modal-overlay">
       <div className="event-approval-modal">
         <div className="modal-header">
-          <h2>Create Event & Submit for Approval</h2>
+          <h2>{proposal.approvalStatus === 'REJECTED' ? 'Fix & Reapply for Approval' : 'Create Event & Submit for Approval'}</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
@@ -460,6 +460,18 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
           <div className="proposal-info">
             <h3>Original Proposal: "{proposal.title}"</h3>
             <p className="proposal-description">{proposal.description}</p>
+            {proposal.rejectionReason && (
+              <div style={{
+                background: '#fff5f5',
+                border: '1px solid #fed7d7',
+                color: '#8a1621',
+                borderRadius: 8,
+                padding: '10px 12px',
+                marginTop: 10
+              }}>
+                <strong>Rejected Reason:</strong> {proposal.rejectionReason}
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="event-approval-form">

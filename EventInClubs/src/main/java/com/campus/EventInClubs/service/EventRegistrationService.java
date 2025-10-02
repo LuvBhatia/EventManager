@@ -26,7 +26,7 @@ public class EventRegistrationService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     
-    public EventRegistrationDto registerForEvent(Long eventId, Long userId, String notes) {
+    public EventRegistrationDto registerForEvent(Long eventId, Long userId, String notes, String rollNumber) {
         // Check if event exists and is open for registration
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found"));
@@ -39,20 +39,23 @@ public class EventRegistrationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        // Check if user is already registered
-        if (registrationRepository.existsByEventIdAndUserIdAndStatus(eventId, userId, EventRegistration.RegistrationStatus.REGISTERED)) {
-            throw new RuntimeException("User is already registered for this event");
+        // Check if user is already registered (any status except CANCELLED)
+        if (registrationRepository.existsByEventIdAndUserId(eventId, userId)) {
+            EventRegistration existingRegistration = registrationRepository.findByEventIdAndUserId(eventId, userId).orElse(null);
+            if (existingRegistration != null && existingRegistration.getStatus() != EventRegistration.RegistrationStatus.CANCELLED) {
+                throw new RuntimeException("User is already registered for this event");
+            }
         }
         
-        // Check capacity
-        Long currentRegistrations = registrationRepository.countRegisteredByEventId(eventId);
+        // Check capacity (count REGISTERED + ATTENDED + NO_SHOW towards capacity)
+        Long currentRegistrations = registrationRepository.countActiveByEventId(eventId);
         if (event.getMaxParticipants() != null && currentRegistrations >= event.getMaxParticipants()) {
             // Register as waitlisted
-            return createRegistration(event, user, EventRegistration.RegistrationStatus.WAITLISTED, notes);
+            return createRegistration(event, user, EventRegistration.RegistrationStatus.WAITLISTED, notes, rollNumber);
         }
         
         // Register normally
-        EventRegistrationDto registration = createRegistration(event, user, EventRegistration.RegistrationStatus.REGISTERED, notes);
+        EventRegistrationDto registration = createRegistration(event, user, EventRegistration.RegistrationStatus.REGISTERED, notes, rollNumber);
         
         // Send notification to user
         notificationService.createNotification(
@@ -78,12 +81,13 @@ public class EventRegistrationService {
         return registration;
     }
     
-    private EventRegistrationDto createRegistration(Event event, User user, EventRegistration.RegistrationStatus status, String notes) {
+    private EventRegistrationDto createRegistration(Event event, User user, EventRegistration.RegistrationStatus status, String notes, String rollNumber) {
         EventRegistration registration = EventRegistration.builder()
                 .event(event)
                 .user(user)
                 .status(status)
                 .registrationNotes(notes)
+                .rollNumber(rollNumber)
                 .paymentStatus(event.getRegistrationFee() == null || event.getRegistrationFee() == 0 
                     ? EventRegistration.PaymentStatus.NOT_REQUIRED 
                     : EventRegistration.PaymentStatus.PENDING)
@@ -108,7 +112,7 @@ public class EventRegistrationService {
     }
     
     public Long getRegistrationCount(Long eventId) {
-        return registrationRepository.countRegisteredByEventId(eventId);
+        return registrationRepository.countActiveByEventId(eventId);
     }
     
     public EventRegistrationDto updateRegistrationStatus(Long registrationId, EventRegistration.RegistrationStatus newStatus) {
@@ -152,6 +156,14 @@ public class EventRegistrationService {
         
         log.info("User {} cancelled registration for event {}", userId, eventId);
     }
+
+    public EventRegistrationDto setRollNumber(Long eventId, Long userId, String rollNumber) {
+        EventRegistration registration = registrationRepository.findByEventIdAndUserId(eventId, userId)
+                .orElseThrow(() -> new RuntimeException("Registration not found"));
+        registration.setRollNumber(rollNumber);
+        EventRegistration saved = registrationRepository.save(registration);
+        return convertToDto(saved);
+    }
     
     private EventRegistrationDto convertToDto(EventRegistration registration) {
         return EventRegistrationDto.builder()
@@ -168,6 +180,7 @@ public class EventRegistrationService {
                 .userEmail(registration.getUser().getEmail())
                 .status(registration.getStatus())
                 .registrationNotes(registration.getRegistrationNotes())
+                .rollNumber(registration.getRollNumber())
                 .paymentStatus(registration.getPaymentStatus())
                 .registeredAt(registration.getRegisteredAt())
                 .build();

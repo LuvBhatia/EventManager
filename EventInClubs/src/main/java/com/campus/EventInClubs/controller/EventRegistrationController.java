@@ -24,9 +24,10 @@ public class EventRegistrationController {
     public ResponseEntity<?> registerForEvent(
             @RequestParam Long eventId,
             @RequestParam Long userId,
+            @RequestParam String rollNumber,
             @RequestParam(required = false) String notes) {
         try {
-            EventRegistrationDto registration = registrationService.registerForEvent(eventId, userId, notes);
+            EventRegistrationDto registration = registrationService.registerForEvent(eventId, userId, notes, rollNumber);
             return ResponseEntity.ok(registration);
         } catch (RuntimeException e) {
             log.error("Error registering for event: {}", e.getMessage());
@@ -36,6 +37,23 @@ public class EventRegistrationController {
             log.error("Error registering for event: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Internal server error"));
+        }
+    }
+
+    @PutMapping("/roll")
+    public ResponseEntity<?> setRollNumber(
+            @RequestParam Long eventId,
+            @RequestParam Long userId,
+            @RequestParam String rollNumber) {
+        try {
+            EventRegistrationDto updated = registrationService.setRollNumber(eventId, userId, rollNumber);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            log.error("Error setting roll number: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error setting roll number: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Internal server error"));
         }
     }
     

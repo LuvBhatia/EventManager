@@ -25,6 +25,14 @@ export default function ClubAdminDashboard() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [reapplyInProgress, setReapplyInProgress] = useState(false);
+  const [selectedClubId, setSelectedClubId] = useState(null);
+  const [showRegistrationsModal, setShowRegistrationsModal] = useState(false);
+  const [registrations, setRegistrations] = useState([]);
+  const [attendanceMap, setAttendanceMap] = useState({});
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const [registrationsEventTitle, setRegistrationsEventTitle] = useState('');
+  const [registrationsEventId, setRegistrationsEventId] = useState(null);
   // Handle URL parameters for tab navigation
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -48,6 +56,9 @@ export default function ClubAdminDashboard() {
     if (clubs.length > 0) {
       console.log('Clubs loaded, fetching rejected events for clubs:', clubs);
       fetchRejectedEvents(clubs);
+      if (!selectedClubId) {
+        setSelectedClubId(clubs[0]?.id || null);
+      }
     }
   }, [clubs]);
 
@@ -155,6 +166,8 @@ export default function ClubAdminDashboard() {
         submissionDeadline: event.ideaSubmissionDeadline || event.submissionDeadline,
         status: event.status, // Event status (DRAFT, PENDING_APPROVAL, APPROVED, etc.)
         approvalStatus: event.approvalStatus, // Approval status (PENDING, APPROVED, REJECTED)
+        rejectionReason: event.rejectionReason || '',
+        approvedByName: event.approvedByName || '',
         upvotes: 0,
         ideas: []
       }));
@@ -238,6 +251,13 @@ export default function ClubAdminDashboard() {
         alert('Failed to reject proposal. Please try again.');
       }
     }
+  };
+
+  const handleReapplyProposal = (proposal) => {
+    // Open approval modal (same UI as approve) with reason visible
+    setSelectedProposal({ ...proposal });
+    setReapplyInProgress(true);
+    setShowApprovalModal(true);
   };
 
   const handleEventApproval = async (eventData) => {
@@ -350,7 +370,25 @@ export default function ClubAdminDashboard() {
       // Fetch published events for admin dashboard
       const response = await fetch('http://localhost:8080/api/events/admin/published');
       const activeEventsData = await response.json();
-      setActiveEvents(activeEventsData || []);
+      const list = activeEventsData || [];
+      setActiveEvents(list);
+      // After loading events, fetch live registration counts per event
+      try {
+        const counts = await Promise.all(
+          (list || []).map(async ev => {
+            try {
+              const r = await fetch(`http://localhost:8080/api/event-registrations/event/${ev.id}/count`);
+              if (!r.ok) return { id: ev.id, count: ev.currentParticipants || 0 };
+              const json = await r.json();
+              return { id: ev.id, count: json?.count ?? (ev.currentParticipants || 0) };
+            } catch {
+              return { id: ev.id, count: ev.currentParticipants || 0 };
+            }
+          })
+        );
+        const map = counts.reduce((acc, x) => { acc[x.id] = x.count; return acc; }, {});
+        setActiveEvents(prev => (prev || []).map(ev => ({ ...ev, currentParticipants: map[ev.id] ?? ev.currentParticipants })));
+      } catch {}
     } catch (error) {
       console.error('Error fetching active events:', error);
       // Fallback to mock active events if API fails
@@ -444,8 +482,21 @@ export default function ClubAdminDashboard() {
 
   const handleEventSaved = async (savedEvent) => {
     console.log('Event saved:', savedEvent);
-    await fetchEvents(); // Refresh events list immediately
-    await fetchActiveEvents(); // Also refresh active events
+    try {
+      // If we came here via Reapply, move status to Pending Approval after saving changes
+      if (reapplyInProgress && savedEvent?.id) {
+        await eventApi.updateEventStatus(savedEvent.id, 'PENDING_APPROVAL');
+        alert('Changes saved. Your event has been reapplied for approval.');
+      }
+    } catch (e) {
+      console.error('Error moving event to Pending Approval after reapply:', e);
+      alert('Saved changes, but failed to reapply automatically. Please try again.');
+    } finally {
+      setReapplyInProgress(false);
+    }
+    await fetchEvents();
+    await fetchActiveEvents();
+    await fetchProposals();
   };
 
   const handleViewEventDetails = (event) => {
@@ -455,36 +506,135 @@ export default function ClubAdminDashboard() {
 
   const handleViewRegistrations = async (eventId) => {
     try {
+      setRegistrationsEventId(eventId);
       // Fetch registrations for this event
       const response = await fetch(`http://localhost:8080/api/event-registrations/event/${eventId}`);
       if (response.ok) {
-        const registrations = await response.json();
-        
-        // Create a detailed view of registrations
-        let registrationDetails = `Event Registrations:\n\n`;
-        registrationDetails += `Total Registrations: ${registrations.length}\n\n`;
-        
-        if (registrations.length === 0) {
-          registrationDetails += 'No registrations yet.';
-        } else {
-          registrations.forEach((reg, index) => {
-            registrationDetails += `${index + 1}. ${reg.userName} (${reg.userEmail})\n`;
-            registrationDetails += `   Status: ${reg.status}\n`;
-            registrationDetails += `   Registered: ${new Date(reg.registeredAt).toLocaleString()}\n`;
-            if (reg.registrationNotes) {
-              registrationDetails += `   Notes: ${reg.registrationNotes}\n`;
-            }
-            registrationDetails += `   Payment: ${reg.paymentStatus}\n\n`;
-          });
-        }
-        
-        alert(registrationDetails);
+        const data = await response.json();
+        setRegistrations(data);
+        // Sync the visible registrations count on the Active Events card immediately
+        setActiveEvents(prev => (prev || []).map(ev => ev.id === eventId ? { ...ev, currentParticipants: (data || []).length } : ev));
+        const storageKey = `attendance:event:${eventId}`;
+        const saved = localStorage.getItem(storageKey);
+        const initialMap = (data || []).reduce((acc, reg) => {
+          acc[reg.id] = reg.status === 'ATTENDED';
+          return acc;
+        }, {});
+        // Always use the current status from backend as the source of truth
+        setAttendanceMap(initialMap);
+        const ev = activeEvents.find(e => e.id === eventId);
+        setRegistrationsEventTitle(ev ? ev.title : 'Event Registrations');
+        setShowRegistrationsModal(true);
       } else {
         throw new Error('Failed to fetch registrations');
       }
     } catch (error) {
       console.error('Error fetching registrations:', error);
       alert('Failed to load registrations. Please try again.');
+    }
+  };
+
+  const handleToggleAttendance = async (registrationId) => {
+    const currentStatus = attendanceMap[registrationId];
+    const newPresentStatus = !currentStatus;
+    const newStatus = newPresentStatus ? 'ATTENDED' : 'NO_SHOW';
+    
+    console.log(`Toggling attendance for registration ${registrationId}: ${currentStatus} -> ${newPresentStatus} (${newStatus})`);
+    
+    try {
+      // Update backend immediately
+      const response = await fetch(`http://localhost:8080/api/event-registrations/${registrationId}/status?status=${newStatus}`, { 
+        method: 'PUT' 
+      });
+      
+      if (response.ok) {
+        // Update local state
+        setAttendanceMap(prev => {
+          const updated = { ...prev, [registrationId]: newPresentStatus };
+          if (registrationsEventId) {
+            localStorage.setItem(`attendance:event:${registrationsEventId}`, JSON.stringify(updated));
+          }
+          return updated;
+        });
+        
+        // Update the registrations list to reflect the new status
+        const updatedRegistrations = registrations.map(reg => 
+          reg.id === registrationId ? { ...reg, status: newStatus } : reg
+        );
+        setRegistrations(updatedRegistrations);
+        
+        // Update the active events count immediately - count REGISTERED, ATTENDED, and NO_SHOW (exclude CANCELLED/WITHDRAWN)
+        setActiveEvents(prev => (prev || []).map(ev => {
+          if (ev.id === registrationsEventId) {
+            // Count current registrations with REGISTERED, ATTENDED, or NO_SHOW status
+            const currentCount = updatedRegistrations.filter(reg => 
+              reg.status === 'REGISTERED' || reg.status === 'ATTENDED' || reg.status === 'NO_SHOW'
+            ).length;
+            console.log(`Updated count for event ${ev.id}: ${currentCount} (REGISTERED + ATTENDED + NO_SHOW)`);
+            return { ...ev, currentParticipants: currentCount };
+          }
+          return ev;
+        }));
+      } else {
+        console.error('Failed to update registration status');
+        alert('Failed to update attendance. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating attendance:', error);
+      alert('Failed to update attendance. Please try again.');
+    }
+  };
+
+  const handleSaveAttendance = async () => {
+    try {
+      setSavingAttendance(true);
+      
+      // Build CSV and trigger download on device
+      const headers = ['Name','Email','Roll','Present','Status','Registered At'];
+      const rows = registrations.map(reg => {
+        const present = attendanceMap[reg.id] === true;
+        return [
+          reg.userName || '',
+          reg.userEmail || '',
+          reg.rollNumber || '',
+          present ? 'Yes' : 'No',
+          present ? 'ATTENDED' : 'NO_SHOW',
+          reg.registeredAt ? new Date(reg.registeredAt).toLocaleString() : ''
+        ];
+      });
+      const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${String(cell).replaceAll('"','""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${registrationsEventTitle || 'attendance'}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Clear local overrides for this event and refetch fresh statuses
+      if (registrationsEventId) {
+        localStorage.removeItem(`attendance:event:${registrationsEventId}`);
+        // Reload registrations to get updated statuses and refresh the modal
+        const response = await fetch(`http://localhost:8080/api/event-registrations/event/${registrationsEventId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setRegistrations(data);
+          // Update attendance map with fresh status from backend
+          const freshMap = (data || []).reduce((acc, reg) => {
+            acc[reg.id] = reg.status === 'ATTENDED';
+            return acc;
+          }, {});
+          setAttendanceMap(freshMap);
+        }
+      }
+      alert('Attendance downloaded successfully');
+    } catch (e) {
+      console.error('Error saving attendance', e);
+      alert('Failed to download attendance. Please try again.');
+    } finally {
+      setSavingAttendance(false);
     }
   };
 
@@ -849,7 +999,40 @@ export default function ClubAdminDashboard() {
               )}
             </div>
             
-            <div className="proposal-actions">
+              <div className="proposal-actions">
+              {/* If rejected, show reason and reapply/edit actions; hide approve/reject */}
+              {(proposal.status === 'REJECTED' || proposal.approvalStatus === 'REJECTED') && (
+                <div style={{ width: '100%' }}>
+                  {proposal.rejectionReason && (
+                    <div style={{
+                      background: '#fff5f5',
+                      border: '1px solid #fed7d7',
+                      color: '#8a1621',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      marginBottom: 10
+                    }}>
+                      <strong>Rejected Reason:</strong> {proposal.rejectionReason}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span 
+                      className="status-badge rejected"
+                      title="This proposal was rejected by Super Admin"
+                      style={{ display: 'inline-block' }}
+                    >
+                      ❌ Rejected
+                    </span>
+                    <button 
+                      className="btn-success"
+                      onClick={() => handleReapplyProposal(proposal)}
+                      title="Move status to Pending Approval"
+                    >
+                      🔁 Reapply
+                    </button>
+                  </div>
+                </div>
+              )}
               <button 
                 className="btn-primary"
                 onClick={() => handleViewIdeas(proposal.id)}
@@ -869,11 +1052,7 @@ export default function ClubAdminDashboard() {
                   ✅ Approved
                 </span>
               )}
-              {proposal.status === 'REJECTED' && (
-                <span className="status-badge rejected" title="Rejected by Super Admin">
-                  ❌ Rejected
-                </span>
-              )}
+              {/* Rejected pill is shown above only when rejected by Super Admin */}
               {/* Only show Approved badge if status is PUBLISHED AND approvalStatus is APPROVED */}
               {proposal.status === 'PUBLISHED' && proposal.approvalStatus === 'APPROVED' && (
                 <span className="status-badge approved" title="Approved by Super Admin">
@@ -881,8 +1060,8 @@ export default function ClubAdminDashboard() {
                 </span>
               )}
               
-              {/* Only show Approve and Reject buttons if NOT approved by super admin and NOT pending approval */}
-              {proposal.approvalStatus !== 'APPROVED' && proposal.status !== 'PENDING_APPROVAL' && (
+              {/* Only show Approve and Reject when not pending/approved/rejected */}
+              {proposal.approvalStatus !== 'APPROVED' && proposal.status !== 'PENDING_APPROVAL' && proposal.status !== 'REJECTED' && (
                 <>
                   <button 
                     className="btn-success"
@@ -928,88 +1107,32 @@ export default function ClubAdminDashboard() {
   const renderRejectedEvents = () => {
     return (
       <div className="rejected-events-section">
-        {rejectedEvents.length === 0 ? (
-          <div className="no-events">
-            <h3>No rejected events</h3>
-            <p>All your submitted events are either approved or pending review.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Rejected Events</h2>
+            <p style={{ margin: 0, color: '#666' }}>Review the reasons and resubmit after fixes</p>
           </div>
-        ) : (
-          <div className="events-list">
-            {rejectedEvents.map(event => (
-              <div key={event.id} className="rejected-event-card">
-                <div className="event-header">
-                  <div className="event-title-section">
-                    <h3>{event.title}</h3>
-                    <span className="event-type">{event.type}</span>
-                  </div>
-                  <div className="rejection-date">
-                    Rejected on {event.approvalDate ? new Date(event.approvalDate).toLocaleString() : 'N/A'}
-                  </div>
-                </div>
+          {clubs.length > 0 && (
+            <div>
+              <label htmlFor="clubSelect" style={{ marginRight: 8 }}>Club:</label>
+              <select
+                id="clubSelect"
+                value={selectedClubId || 'all'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedClubId(val === 'all' ? null : Number(val));
+                }}
+              >
+                <option value="all">All clubs</option>
+                {clubs.map((club) => (
+                  <option key={club.id} value={club.id}>{club.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
-                <div className="event-details">
-                  <div className="detail-row">
-                    <span className="label">Club:</span>
-                    <span className="value">{event.clubName}</span>
-                  </div>
-                  
-                  <div className="detail-row">
-                    <span className="label">Date & Time:</span>
-                    <span className="value">
-                      {event.startDate ? new Date(event.startDate).toLocaleString() : 'N/A'} - {event.endDate ? new Date(event.endDate).toLocaleString() : 'N/A'}
-                    </span>
-                  </div>
-
-                  <div className="detail-row">
-                    <span className="label">Participants:</span>
-                    <span className="value">{event.maxParticipants}</span>
-                  </div>
-
-                  <div className="detail-row">
-                    <span className="label">Registration Fee:</span>
-                    <span className="value">₹{event.registrationFee || 0}</span>
-                  </div>
-
-                  {event.hallName && (
-                    <div className="detail-row">
-                      <span className="label">Hall:</span>
-                      <span className="value">{event.hallName} (Capacity: {event.hallCapacity})</span>
-                    </div>
-                  )}
-
-                  {event.description && (
-                    <div className="detail-row">
-                      <span className="label">Description:</span>
-                      <span className="value description">{event.description}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rejection-reason">
-                  <h4>Rejection Reason:</h4>
-                  <div className="reason-text">
-                    {event.rejectionReason}
-                  </div>
-                  <div className="rejected-by">
-                    - {event.approvedByName || 'Super Admin'}
-                  </div>
-                </div>
-
-                <div className="event-actions">
-                  <button 
-                    className="edit-resubmit-button"
-                    onClick={() => {
-                      // TODO: Implement edit and resubmit functionality
-                      alert('Edit & Resubmit functionality coming soon!\n\nYou will be able to:\n1. Edit event details\n2. Update based on feedback\n3. Resubmit for approval');
-                    }}
-                  >
-                    Edit & Resubmit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <RejectedEventsPanel clubId={selectedClubId || 'all'} />
       </div>
     );
   };
@@ -1191,16 +1314,7 @@ export default function ClubAdminDashboard() {
             <span className="nav-icon">🎪</span>
             <span>Active Events</span>
           </button>
-          <button 
-            className={`nav-item ${activeTab === 'rejected-events' ? 'active' : ''}`}
-            onClick={() => setActiveTab('rejected-events')}
-          >
-            <span className="nav-icon">❌</span>
-            <span>Rejected Events</span>
-            {rejectedEvents.length > 0 && (
-              <span className="badge">{rejectedEvents.length}</span>
-            )}
-          </button>
+          {/* Removed separate Rejected Events section; rejections will appear within Event Proposals */}
           <button 
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
@@ -1263,9 +1377,63 @@ export default function ClubAdminDashboard() {
           onClose={() => {
             setShowApprovalModal(false);
             setSelectedProposal(null);
+            setReapplyInProgress(false);
           }}
           onApprove={handleEventApproval}
         />
+      )}
+
+      {showRegistrationsModal && (
+        <div className="modal-overlay" onClick={() => setShowRegistrationsModal(false)}>
+          <div className="event-approval-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Registrations — {registrationsEventTitle}</h2>
+              <button className="close-btn" onClick={() => setShowRegistrationsModal(false)}>×</button>
+            </div>
+            <div className="modal-content">
+              {registrations.length === 0 ? (
+                <div>No registrations yet.</div>
+              ) : (
+                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '8px' }}>Name</th>
+                        <th style={{ textAlign: 'left', padding: '8px' }}>Email</th>
+                        <th style={{ textAlign: 'left', padding: '8px' }}>Roll</th>
+                        <th style={{ textAlign: 'left', padding: '8px' }}>Status</th>
+                        <th style={{ textAlign: 'left', padding: '8px' }}>Present</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {registrations.map(reg => (
+                        <tr key={reg.id} style={{ borderTop: '1px solid #eee' }}>
+                          <td style={{ padding: '8px' }}>{reg.userName}</td>
+                          <td style={{ padding: '8px' }}>{reg.userEmail}</td>
+                          <td style={{ padding: '8px' }}>{reg.rollNumber || '-'}</td>
+                          <td style={{ padding: '8px' }}>{reg.status}</td>
+                          <td style={{ padding: '8px' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!attendanceMap[reg.id]}
+                              onChange={() => handleToggleAttendance(reg.id)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn-secondary" onClick={() => setShowRegistrationsModal(false)}>Close</button>
+                <button className="btn-success" disabled={savingAttendance || registrations.length === 0} onClick={handleSaveAttendance}>
+                  {savingAttendance ? 'Downloading...' : '📥 Download CSV'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -22,6 +22,7 @@ public class EventRegistrationDto {
     private String userEmail;
     private EventRegistration.RegistrationStatus status;
     private String registrationNotes;
+    private String rollNumber;
     private EventRegistration.PaymentStatus paymentStatus;
     private LocalDateTime registeredAt;
     

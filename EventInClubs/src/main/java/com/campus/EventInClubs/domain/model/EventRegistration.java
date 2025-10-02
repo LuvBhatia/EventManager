@@ -33,6 +33,9 @@ public class EventRegistration {
     @Column(name = "registration_notes")
     private String registrationNotes;
     
+    @Column(name = "roll_number", length = 32)
+    private String rollNumber;
+
     @Column(name = "payment_status")
     @Enumerated(EnumType.STRING)
     @Builder.Default

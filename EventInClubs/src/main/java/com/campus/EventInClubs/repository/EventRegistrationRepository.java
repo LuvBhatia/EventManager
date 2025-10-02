@@ -18,9 +18,9 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     // Find registration by event and user
     Optional<EventRegistration> findByEventIdAndUserId(Long eventId, Long userId);
     
-    // Count total registrations for an event
-    @Query("SELECT COUNT(er) FROM EventRegistration er WHERE er.event.id = :eventId AND er.status = 'REGISTERED'")
-    Long countRegisteredByEventId(@Param("eventId") Long eventId);
+    // Count registrations contributing to capacity (REGISTERED + ATTENDED + NO_SHOW)
+    @Query("SELECT COUNT(er) FROM EventRegistration er WHERE er.event.id = :eventId AND er.status IN ('REGISTERED', 'ATTENDED', 'NO_SHOW')")
+    Long countActiveByEventId(@Param("eventId") Long eventId);
     
     // Count registrations by status for an event
     @Query("SELECT COUNT(er) FROM EventRegistration er WHERE er.event.id = :eventId AND er.status = :status")
@@ -29,7 +29,10 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     // Find all registrations for a user
     List<EventRegistration> findByUserIdOrderByRegisteredAtDesc(Long userId);
     
-    // Check if user is registered for an event
+    // Check if user is registered for an event (any status)
+    boolean existsByEventIdAndUserId(Long eventId, Long userId);
+    
+    // Check if user is registered for an event with specific status
     boolean existsByEventIdAndUserIdAndStatus(Long eventId, Long userId, EventRegistration.RegistrationStatus status);
     
     // Get registrations with payment status

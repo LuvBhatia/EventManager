@@ -27,10 +27,14 @@ const RejectedEventsPanel = ({ clubId }) => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      console.log('Request URL:', `http://localhost:8080/api/events/rejected/${clubId}`);
+      const url = clubId && clubId !== 'all' ? 
+        `http://localhost:8080/api/events/rejected/${clubId}` : 
+        `http://localhost:8080/api/events/rejected`;
+      
+      console.log('Request URL:', url);
       console.log('Headers:', headers);
       
-      const response = await fetch(`http://localhost:8080/api/events/rejected/${clubId}`, {
+      const response = await fetch(url, {
         credentials: 'include',
         headers: headers
       });
@@ -39,24 +43,7 @@ const RejectedEventsPanel = ({ clubId }) => {
       
       if (response.ok) {
         const events = await response.json();
-        console.log('Rejected events fetched for club', clubId, ':', events);
-        console.log('Number of rejected events:', events.length);
-        
-        // If no events for this club, try fetching all rejected events to debug
-        if (events.length === 0) {
-          console.log('No rejected events for this club. Fetching all rejected events for debugging...');
-          const allResponse = await fetch('http://localhost:8080/api/events/rejected', {
-            credentials: 'include',
-            headers: headers
-          });
-          
-          if (allResponse.ok) {
-            const allEvents = await allResponse.json();
-            console.log('All rejected events in system:', allEvents);
-            console.log('Their club IDs:', allEvents.map(e => ({ id: e.id, title: e.title, clubId: e.clubId, clubName: e.clubName })));
-          }
-        }
-        
+        console.log('Rejected events fetched:', events);
         setRejectedEvents(events);
       } else {
         console.error('Failed to fetch rejected events. Status:', response.status);

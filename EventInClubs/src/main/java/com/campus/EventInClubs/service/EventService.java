@@ -55,6 +55,8 @@ public class EventService {
                 .filter(event -> event.getStartDate() != null && event.getEndDate() != null) // Must have dates (properly approved)
                 .filter(event -> event.getLocation() != null && !event.getLocation().trim().isEmpty()) // Must have location (properly approved)
                 .filter(event -> event.getMaxParticipants() != null) // Must have capacity (properly approved)
+                // Keep visible until 3 hours after the end time
+                .filter(event -> event.getEndDate().isAfter(java.time.LocalDateTime.now().minusHours(3)))
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -77,11 +79,12 @@ public class EventService {
         LocalDateTime oneDayAgo = now.minusDays(1); // 24 hours ago
         return eventRepository.findAll().stream()
                 .filter(event -> event.getIsActive() == null || event.getIsActive()) // Show events that are active or have null isActive
-                // Include events in various stages: DRAFT, PENDING_APPROVAL, APPROVED, PUBLISHED
+                // Include events in various stages: DRAFT, PENDING_APPROVAL, APPROVED, PUBLISHED, REJECTED
                 .filter(event -> event.getStatus() == Event.EventStatus.DRAFT 
                         || event.getStatus() == Event.EventStatus.PENDING_APPROVAL
                         || event.getStatus() == Event.EventStatus.APPROVED
-                        || event.getStatus() == Event.EventStatus.PUBLISHED)
+                        || event.getStatus() == Event.EventStatus.PUBLISHED
+                        || event.getStatus() == Event.EventStatus.REJECTED)
                 .filter(event -> event.getIdeaSubmissionDeadline() != null) // Must have deadline for idea submissions
                 .filter(event -> event.getIdeaSubmissionDeadline().isAfter(oneDayAgo)) // Show events until 1 day after deadline
                 // Note: Removed acceptsIdeas filter - club admins should see all events with deadlines for management
@@ -394,7 +397,7 @@ public class EventService {
         log.debug("Event {} has {} ideas with {} total votes", event.getId(), eventIdeas.size(), totalVotes);
         
         // Get actual registration count
-        Long registrationCount = eventRegistrationRepository.countRegisteredByEventId(event.getId());
+        Long registrationCount = eventRegistrationRepository.countActiveByEventId(event.getId());
         int currentParticipants = registrationCount != null ? registrationCount.intValue() : 0;
         
         return EventDto.builder()

@@ -723,16 +723,16 @@
 }
 
 .btn-success {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 6px 10px;
   background: #10b981;
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -1084,6 +1084,8 @@
 .status-badge.rejected {
   background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
   color: white;
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
 @keyframes pulse {

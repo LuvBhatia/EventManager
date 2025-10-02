@@ -8,7 +8,8 @@ const ActiveEvents = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [registrationData, setRegistrationData] = useState({
-    notes: ''
+    notes: '',
+    rollNumber: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -35,7 +36,7 @@ const ActiveEvents = () => {
   const handleRegisterClick = (event) => {
     setSelectedEvent(event);
     setShowRegistrationModal(true);
-    setRegistrationData({ notes: '' });
+    setRegistrationData({ notes: '', rollNumber: '' });
   };
 
   const handleRegistrationSubmit = async (e) => {
@@ -57,6 +58,7 @@ const ActiveEvents = () => {
         body: new URLSearchParams({
           eventId: selectedEvent.id,
           userId: user.id,
+          rollNumber: registrationData.rollNumber,
           notes: registrationData.notes
         })
       });
@@ -291,6 +293,18 @@ const ActiveEvents = () => {
               </div>
 
               <form onSubmit={handleRegistrationSubmit}>
+                <div className="form-group">
+                  <label htmlFor="rollNumber">Roll Number *</label>
+                  <input
+                    id="rollNumber"
+                    type="text"
+                    value={registrationData.rollNumber}
+                    onChange={(e) => setRegistrationData({...registrationData, rollNumber: e.target.value})}
+                    placeholder="Enter your roll number"
+                    required
+                  />
+                </div>
+
                 <div className="form-group">
                   <label htmlFor="notes">Additional Notes (Optional)</label>
                   <textarea
