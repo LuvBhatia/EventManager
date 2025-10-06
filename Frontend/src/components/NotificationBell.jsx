@@ -85,6 +85,28 @@ const NotificationBell = () => {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/notifications/read-all`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
     const time = new Date(timestamp);
@@ -124,6 +146,15 @@ const NotificationBell = () => {
         <div className="notification-dropdown">
           <div className="notification-header">
             <h3>Notifications</h3>
+            {unreadCount > 0 && (
+              <button 
+                className="mark-all-read"
+                title="Mark all as read"
+                onClick={markAllAsRead}
+              >
+                Mark all as read
+              </button>
+            )}
             <button 
               className="close-button"
               onClick={() => setShowDropdown(false)}

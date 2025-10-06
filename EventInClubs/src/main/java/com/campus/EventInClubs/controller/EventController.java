@@ -286,6 +286,22 @@ public class EventController {
                     .body(java.util.Map.of("error", "Internal server error"));
         }
     }
+
+    @PutMapping("/{eventId}/activate")
+    public ResponseEntity<?> activateEvent(@PathVariable Long eventId) {
+        try {
+            EventDto updated = eventService.activateEvent(eventId);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            log.error("Error activating event: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error activating event: {}", eventId, e);
+            return ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "Internal server error"));
+        }
+    }
     
     @PostMapping("/approve-proposal")
     public ResponseEntity<?> approveEventProposal(

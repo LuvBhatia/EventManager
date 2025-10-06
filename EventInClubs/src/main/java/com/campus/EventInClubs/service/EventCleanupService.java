@@ -42,6 +42,14 @@ public class EventCleanupService {
             
             for (Event event : expiredEvents) {
                 try {
+                    // Do not auto-close APPROVED/PUBLISHED events based solely on idea deadline.
+                    // These should remain visible according to their start/end visibility rules.
+                    if (event.getStatus() == Event.EventStatus.PUBLISHED ||
+                        event.getStatus() == Event.EventStatus.APPROVED) {
+                        log.debug("Skipping cleanup for approved/published event: {} (ID: {})", event.getTitle(), event.getId());
+                        continue;
+                    }
+
                     // Set event as inactive instead of deleting to preserve data integrity
                     event.setIsActive(false);
                     event.setStatus(Event.EventStatus.COMPLETED);

@@ -69,7 +69,8 @@ public class EventService {
                 .filter(event -> event.getApprovalStatus() == null || 
                                  event.getApprovalStatus() == Event.ApprovalStatus.APPROVED) // Approved OR null (old events without approval workflow)
                 .filter(event -> event.getStartDate() != null && event.getEndDate() != null) // Must have dates
-                .filter(event -> event.getStartDate().isAfter(java.time.LocalDateTime.now())) // Only future events
+                // Students should stop seeing the event as soon as it starts
+                .filter(event -> event.getStartDate().isAfter(java.time.LocalDateTime.now()))
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -451,6 +452,15 @@ public class EventService {
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid event status: " + status);
         }
+    }
+
+    public EventDto activateEvent(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+        event.setIsActive(true);
+        Event savedEvent = eventRepository.save(event);
+        log.info("Activated event {} (set isActive=true)", eventId);
+        return convertToDto(savedEvent);
     }
     
     @Transactional

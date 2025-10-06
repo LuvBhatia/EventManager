@@ -209,6 +209,14 @@ const ActiveEvents = () => {
                 </div>
 
                 <div className="event-details">
+                  {event.hallName && (
+                    <div className="detail-item">
+                      <span className="detail-icon">🏛️</span>
+                      <div className="detail-content">
+                        <strong>Hall:</strong> {event.hallName}
+                      </div>
+                    </div>
+                  )}
                   <div className="detail-item">
                     <span className="detail-icon">📅</span>
                     <div className="detail-content">
