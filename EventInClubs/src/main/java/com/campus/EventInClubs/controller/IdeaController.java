@@ -188,4 +188,23 @@ public class IdeaController {
                     .body(Map.of("error", "Internal server error"));
         }
     }
+    
+    @PutMapping("/{id}/approve-with-ppt")
+    public ResponseEntity<?> approveIdeaWithPpt(@PathVariable Long id, 
+                                              @RequestParam String status, 
+                                              @RequestParam Long userId,
+                                              @RequestParam(required = false) String pptFileUrl) {
+        try {
+            IdeaDto updatedIdea = ideaService.updateIdeaStatusWithPpt(id, status, userId, pptFileUrl);
+            return ResponseEntity.ok(updatedIdea);
+        } catch (RuntimeException e) {
+            log.error("Error updating idea status with PPT: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error updating idea status with PPT for id: {}", id, e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Internal server error"));
+        }
+    }
 }

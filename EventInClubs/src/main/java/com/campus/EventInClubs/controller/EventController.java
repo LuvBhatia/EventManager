@@ -315,6 +315,7 @@ public class EventController {
             @RequestParam(value = "registrationFee", required = false, defaultValue = "0") Double registrationFee,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "poster", required = false) org.springframework.web.multipart.MultipartFile poster,
+            @RequestParam(value = "pptFileUrl", required = false) String pptFileUrl,
             @RequestParam(value = "hallId", required = false) Long hallId) {
         
         try {
@@ -334,7 +335,7 @@ public class EventController {
             EventDto approvedEvent = eventService.approveEventProposal(
                 proposalId, eventName, eventType, startDateTime, endDateTime,
                 location, maxParticipants, registrationFee, 
-                description, poster, hallId
+                description, poster, pptFileUrl, hallId
             );
             return ResponseEntity.ok(approvedEvent);
         } catch (RuntimeException e) {

@@ -25,14 +25,12 @@ export default function EventManagementModal({
     tags: '',
     imageUrl: '',
     externalLink: '',
-    status: 'DRAFT',
-    poster: null
+    status: 'DRAFT'
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [posterPreview, setPosterPreview] = useState(null);
 
   const eventTypes = [
     'WORKSHOP', 'SEMINAR', 'COMPETITION', 'HACKATHON', 
@@ -44,6 +42,7 @@ export default function EventManagementModal({
     'DRAFT', 'PUBLISHED', 'REGISTRATION_CLOSED', 
     'ONGOING', 'COMPLETED', 'CANCELLED'
   ];
+
 
   useEffect(() => {
     if (event) {
@@ -118,47 +117,6 @@ export default function EventManagementModal({
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-      if (!allowedTypes.includes(file.type)) {
-        setErrors(prev => ({
-          ...prev,
-          poster: 'Please select a valid image file (JPEG, PNG, GIF)'
-        }));
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({
-          ...prev,
-          poster: 'File size must be less than 5MB'
-        }));
-        return;
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        poster: file
-      }));
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPosterPreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
-
-      // Clear error
-      setErrors(prev => ({
-        ...prev,
-        poster: ''
-      }));
-    }
-  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -210,24 +168,7 @@ export default function EventManagementModal({
         return;
       }
 
-      // If there's a poster file, upload it first
       let imageUrl = formData.imageUrl;
-      if (formData.poster) {
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', formData.poster);
-        
-        const uploadResponse = await fetch('http://localhost:8080/api/upload/poster', {
-          method: 'POST',
-          body: uploadFormData
-        });
-        
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json();
-          imageUrl = uploadResult.url;
-        } else {
-          throw new Error('Failed to upload poster');
-        }
-      }
 
       const eventData = {
         title: formData.title.trim(),
@@ -467,25 +408,6 @@ export default function EventManagementModal({
               <small className="help-text">Leave empty for no deadline. Only future dates and times are allowed.</small>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="poster">Event Poster (Optional)</label>
-              <input
-                type="file"
-                id="poster"
-                name="poster"
-                onChange={handleFileChange}
-                accept="image/*"
-                className={errors.poster ? 'error' : ''}
-              />
-              {errors.poster && <span className="error-text">{errors.poster}</span>}
-              <small className="help-text">Upload event poster (JPEG, PNG, GIF - Max 5MB)</small>
-              
-              {posterPreview && (
-                <div className="poster-preview" style={{ marginTop: '10px', maxWidth: '300px' }}>
-                  <img src={posterPreview} alt="Poster preview" style={{ width: '100%', borderRadius: '8px' }} />
-                </div>
-              )}
-            </div>
 
             <div className="form-actions">
               <button

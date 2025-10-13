@@ -290,7 +290,7 @@ export default function Login() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                <span className="checkmark"></span>
+
                 Remember me
               </label>
               <button

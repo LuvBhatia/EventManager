@@ -349,6 +349,22 @@
   background: #2563eb;
 }
 
+.approve-btn {
+  padding: 6px 12px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+  margin-right: 8px;
+}
+
+.approve-btn:hover {
+  background: #059669;
+}
+
 /* Enhanced Modal Styles */
 .modal-overlay {
   position: fixed;

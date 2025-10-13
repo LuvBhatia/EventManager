@@ -16,6 +16,7 @@ public class IdeaDto {
     private String description;
     private String implementationPlan;
     private String expectedOutcome;
+    private String pptFileUrl;
     private String status; // SUBMITTED, UNDER_REVIEW, APPROVED, IMPLEMENTED, REJECTED
     private Long problemId;
     private String problemTitle;

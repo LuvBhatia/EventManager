@@ -821,11 +821,17 @@ export default function ClubAdminDashboard() {
                 </div>
               </div>
               <div className="club-actions">
-                <button className="btn-secondary">
+                <button 
+                  className="btn-secondary"
+                  onClick={() => navigate(`/clubs/${club.id}`)}
+                >
                   ✏️
                   Edit
                 </button>
-                <button className="btn-secondary">
+                <button 
+                  className="btn-secondary"
+                  onClick={() => navigate(`/clubs/${club.id}/view`)}
+                >
                   👁️
                   View
                 </button>
@@ -1294,18 +1300,18 @@ export default function ClubAdminDashboard() {
             <span>My Clubs</span>
           </button>
           <button 
-            className={`nav-item ${activeTab === 'proposals' ? 'active' : ''}`}
-            onClick={() => setActiveTab('proposals')}
-          >
-            <span className="nav-icon">📝</span>
-            <span>Event Proposals</span>
-          </button>
-          <button 
             className={`nav-item ${activeTab === 'events' ? 'active' : ''}`}
             onClick={() => setActiveTab('events')}
           >
             <span className="nav-icon">🎯</span>
             <span>Topics for Ideas</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'proposals' ? 'active' : ''}`}
+            onClick={() => setActiveTab('proposals')}
+          >
+            <span className="nav-icon">📝</span>
+            <span>Event Proposals</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'active-events' ? 'active' : ''}`}

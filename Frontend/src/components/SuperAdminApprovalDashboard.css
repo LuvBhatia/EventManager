@@ -443,3 +443,214 @@
     font-size: 14px;
   }
 }
+
+/* Ideas Section Styles */
+.ideas-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.section-header h4 {
+  margin: 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.load-ideas-btn {
+  padding: 6px 12px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.load-ideas-btn:hover {
+  background: #0056b3;
+}
+
+.ideas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.idea-item {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  transition: box-shadow 0.2s ease;
+}
+
+.idea-item:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.idea-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.idea-header h5 {
+  margin: 0;
+  color: #343a40;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.submitted {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.rejected {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.implementing {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-badge.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.idea-description {
+  margin: 8px 0;
+  color: #6c757d;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.idea-meta {
+  display: flex;
+  gap: 15px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.idea-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ppt-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e9ecef;
+}
+
+.view-ppt-btn {
+  padding: 6px 12px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.view-ppt-btn:hover {
+  background: #218838;
+}
+
+.no-ideas, .ideas-placeholder {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.no-ideas p, .ideas-placeholder p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Mobile responsiveness for ideas section */
+@media (max-width: 768px) {
+  .ideas-section {
+    margin: 15px 0;
+    padding: 12px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .load-ideas-btn {
+    width: 100%;
+    padding: 8px;
+  }
+  
+  .idea-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .idea-meta {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+/* Event PPT Section Styles */
+.ppt-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+}
+
+.view-ppt-btn {
+  padding: 8px 16px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-ppt-btn:hover {
+  background: #218838;
+}

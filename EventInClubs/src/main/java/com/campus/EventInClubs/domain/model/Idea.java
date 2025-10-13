@@ -50,6 +50,9 @@ public class Idea {
     @Column(name = "expected_outcome")
     private String expectedOutcome;
 
+    @Column(name = "ppt_file_url")
+    private String pptFileUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     @Builder.Default

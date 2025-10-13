@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { eventApi } from '../api/event';
 import { voteApi } from '../api/vote';
 import { getCurrentUser, hasAnyRole } from '../services/authService';
+import IdeaApprovalModal from '../components/IdeaApprovalModal';
 import '../styles/ViewIdeas.css';
 
 const ViewIdeas = () => {
@@ -30,6 +31,8 @@ const ViewIdeas = () => {
   const [votingLoading, setVotingLoading] = useState({});
   const [sortBy, setSortBy] = useState('popular'); // popular, newest, oldest
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedIdeaForApproval, setSelectedIdeaForApproval] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,6 +158,26 @@ const ViewIdeas = () => {
   const closeIdeaModal = () => {
     setShowIdeaModal(false);
     setSelectedIdea(null);
+  };
+
+  const handleApproveIdea = (idea) => {
+    setSelectedIdeaForApproval(idea);
+    setShowApprovalModal(true);
+  };
+
+  const closeApprovalModal = () => {
+    setShowApprovalModal(false);
+    setSelectedIdeaForApproval(null);
+  };
+
+  const handleIdeaApproved = async (updatedIdea) => {
+    // Refresh the ideas list to show updated status
+    try {
+      const updatedIdeas = await eventApi.getIdeasForEvent(eventId).catch(() => []);
+      setIdeas(updatedIdeas || []);
+    } catch (error) {
+      console.error('Error refreshing ideas after approval:', error);
+    }
   };
 
   const handleBackToEvent = () => {
@@ -571,6 +594,13 @@ const ViewIdeas = () => {
                             </span>
                           </div>
                           <button
+                            className="approve-btn"
+                            onClick={() => handleApproveIdea(idea)}
+                            title="Approve/Update idea status"
+                          >
+                            ✅ Approve
+                          </button>
+                          <button
                             className="view-details-btn"
                             onClick={() => handleIdeaClick(idea)}
                             title="View full details"
@@ -816,6 +846,15 @@ const ViewIdeas = () => {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Idea Approval Modal */}
+      {showApprovalModal && selectedIdeaForApproval && (
+        <IdeaApprovalModal
+          idea={selectedIdeaForApproval}
+          onClose={closeApprovalModal}
+          onApprove={handleIdeaApproved}
+        />
       )}
     </div>
   );

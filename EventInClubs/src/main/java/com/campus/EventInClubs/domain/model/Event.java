@@ -94,6 +94,8 @@ public class Event {
     @Column(name = "image_url")
     private String imageUrl;
     
+    @Column(name = "ppt_file_url")
+    private String pptFileUrl;
     
     @Column(name = "is_active", nullable = true)
     @Builder.Default

@@ -195,6 +195,47 @@ public class IdeaService {
         return convertToDto(savedIdea);
     }
     
+    public IdeaDto updateIdeaStatusWithPpt(Long id, String status, Long userId, String pptFileUrl) {
+        Idea idea = ideaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Idea not found"));
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Only club admins and super admins can change status
+        if (!user.getRole().name().equals("CLUB_ADMIN") && !user.getRole().name().equals("SUPER_ADMIN")) {
+            throw new RuntimeException("Only club admins can change idea status");
+        }
+        
+        // Check if user is admin of the club that owns the problem
+        if (!idea.getProblem().getClub().getAdminUser().getId().equals(userId) && !user.getRole().name().equals("SUPER_ADMIN")) {
+            throw new RuntimeException("You can only change status of ideas for your own club's problems");
+        }
+        
+        idea.setStatus(Idea.IdeaStatus.valueOf(status));
+        idea.setUpdatedAt(Instant.now());
+        
+        // Set PPT file URL if provided
+        if (pptFileUrl != null && !pptFileUrl.trim().isEmpty()) {
+            idea.setPptFileUrl(pptFileUrl.trim());
+        }
+        
+        Idea savedIdea = ideaRepository.save(idea);
+        log.info("Updated idea status: {} to {} with PPT: {}", savedIdea.getTitle(), status, pptFileUrl);
+        
+        // Send notification to idea owner
+        if (!savedIdea.getSubmittedBy().getId().equals(userId)) {
+            notificationService.notifyIdeaStatusChanged(savedIdea.getSubmittedBy().getId(), status, savedIdea.getId());
+        }
+        
+        // Check for achievements if idea was implemented
+        if (status.equals("IMPLEMENTING") || status.equals("COMPLETED")) {
+            achievementService.checkAndAwardAchievements(savedIdea.getSubmittedBy().getId());
+        }
+        
+        return convertToDto(savedIdea);
+    }
+    
     public void deleteIdea(Long id, Long userId) {
         Idea idea = ideaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Idea not found"));
@@ -224,6 +265,7 @@ public class IdeaService {
                 .description(idea.getDescription())
                 .implementationPlan(idea.getImplementationPlan())
                 .expectedOutcome(idea.getExpectedOutcome())
+                .pptFileUrl(idea.getPptFileUrl())
                 .problemId(idea.getProblem().getId())
                 .problemTitle(idea.getProblem().getTitle())
                 .submittedById(idea.getSubmittedBy().getId())

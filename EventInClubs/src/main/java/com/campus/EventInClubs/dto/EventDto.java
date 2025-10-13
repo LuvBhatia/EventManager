@@ -35,6 +35,7 @@ public class EventDto {
     private String organizerName;
     private String tags;
     private String imageUrl;
+    private String pptFileUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

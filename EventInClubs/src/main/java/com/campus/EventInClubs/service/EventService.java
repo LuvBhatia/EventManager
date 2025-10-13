@@ -422,6 +422,7 @@ public class EventService {
                 .organizerName(event.getOrganizer().getName())
                 .tags(event.getTags())
                 .imageUrl(event.getImageUrl())
+                .pptFileUrl(event.getPptFileUrl())
                 .createdAt(event.getCreatedAt())
                 .updatedAt(event.getUpdatedAt())
                 .totalVotes(totalVotes)
@@ -469,6 +470,7 @@ public class EventService {
                                        Integer maxParticipants, Double registrationFee, 
                                        String description,
                                        org.springframework.web.multipart.MultipartFile poster,
+                                       String pptFileUrl,
                                        Long hallId) {
         
         log.info("Approving event proposal - proposalId: {}, name: {}, type: {}", proposalId, eventName, eventType);
@@ -559,6 +561,12 @@ public class EventService {
                     log.warn("Failed to upload poster, continuing without poster: {}", e.getMessage());
                     // Continue without poster - don't fail the entire approval
                 }
+            }
+            
+            // Handle PPT file URL if provided
+            if (pptFileUrl != null && !pptFileUrl.trim().isEmpty()) {
+                originalEvent.setPptFileUrl(pptFileUrl.trim());
+                log.info("Set PPT file URL for event '{}': {}", eventName, pptFileUrl);
             }
             
             Event savedEvent = eventRepository.save(originalEvent);

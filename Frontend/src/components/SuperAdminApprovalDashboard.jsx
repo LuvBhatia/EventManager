@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { eventApi } from '../api/event';
+import { ideaApi } from '../api/idea';
+import PptViewer from './PptViewer';
 import './SuperAdminApprovalDashboard.css';
 
 const SuperAdminApprovalDashboard = () => {
@@ -11,6 +13,8 @@ const SuperAdminApprovalDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [showPptViewer, setShowPptViewer] = useState(false);
+  const [selectedIdeaForPpt, setSelectedIdeaForPpt] = useState(null);
 
   useEffect(() => {
     fetchAllEvents();
@@ -52,6 +56,16 @@ const SuperAdminApprovalDashboard = () => {
       default:
         setFilteredEvents(allEvents.pending || []);
     }
+  };
+
+  const handleViewPpt = (item) => {
+    setSelectedIdeaForPpt(item);
+    setShowPptViewer(true);
+  };
+
+  const closePptViewer = () => {
+    setShowPptViewer(false);
+    setSelectedIdeaForPpt(null);
   };
 
   const handleApprove = async (eventId) => {
@@ -248,6 +262,19 @@ const SuperAdminApprovalDashboard = () => {
                     <span className="value">{formatDateTime(event.approvalDate)}</span>
                   </div>
                 )}
+
+                {/* PPT Section */}
+                {event.pptFileUrl && (
+                  <div className="detail-row ppt-section">
+                    <span className="label">Event Presentation:</span>
+                    <button 
+                      className="view-ppt-btn"
+                      onClick={() => handleViewPpt(event)}
+                    >
+                      📊 View PPT Presentation
+                    </button>
+                  </div>
+                )}
               </div>
 
               {activeFilter === 'PENDING' && (
@@ -317,6 +344,16 @@ const SuperAdminApprovalDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* PPT Viewer Modal */}
+      {showPptViewer && selectedIdeaForPpt && (
+        <PptViewer
+          pptUrl={selectedIdeaForPpt.pptFileUrl}
+          ideaTitle={selectedIdeaForPpt.title}
+          item={selectedIdeaForPpt}
+          onClose={closePptViewer}
+        />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { hallApi } from '../api/hall';
 import { httpClient } from '../api/http';
+import PptViewer from './PptViewer';
 import './EventApprovalModal.css';
 
 const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
@@ -15,16 +16,21 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
     registrationFee: 0,
     description: proposal?.description || '',
     poster: null,
-    selectedHall: ''
+    selectedHall: '',
+    pptFileUrl: ''
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterPreview, setPosterPreview] = useState(null);
+  const [pptFile, setPptFile] = useState(null);
+  const [pptPreview, setPptPreview] = useState(null);
+  const [uploadingPpt, setUploadingPpt] = useState(false);
   const [availableHalls, setAvailableHalls] = useState([]);
   const [suggestedHall, setSuggestedHall] = useState(null);
   const [loadingHalls, setLoadingHalls] = useState(false);
   const [hallsMessage, setHallsMessage] = useState('');
+  const [showPptViewer, setShowPptViewer] = useState(false);
 
   const eventTypes = [
     'WORKSHOP',
@@ -287,6 +293,79 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
     }
   };
 
+  const handlePptFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      setErrors(prev => ({
+        ...prev,
+        pptFile: 'Please upload a valid PPT or PPTX file'
+      }));
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      setErrors(prev => ({
+        ...prev,
+        pptFile: 'File size must be less than 10MB'
+      }));
+      return;
+    }
+
+    setPptFile(file);
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.pptFile;
+      return newErrors;
+    });
+
+    // Upload file immediately
+    await uploadPptFile(file);
+  };
+
+  const uploadPptFile = async (file) => {
+    setUploadingPpt(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:8080/api/upload/ppt', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload PPT file');
+      }
+
+      const result = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        pptFileUrl: result.url
+      }));
+      setPptPreview(result.url);
+    } catch (error) {
+      console.error('Error uploading PPT:', error);
+      setErrors(prev => ({
+        ...prev,
+        pptFile: 'Failed to upload PPT file. Please try again.'
+      }));
+    } finally {
+      setUploadingPpt(false);
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -411,7 +490,8 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
         maxParticipants: formData.maxParticipants,
         registrationFee: formData.registrationFee || '0',
         hallId: formData.selectedHall,
-        description: formData.description || proposal.description || ''
+        description: formData.description || proposal.description || '',
+        pptFileUrl: formData.pptFileUrl || ''
       });
 
       const createResponse = await httpClient.post('/events/approve-proposal', approveData, {
@@ -661,6 +741,51 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
               )}
             </div>
 
+            {/* PPT Upload Section */}
+            <div className="form-group">
+              <label htmlFor="pptFile">Event Presentation (PPT/PPTX)</label>
+              <div className="file-upload-section">
+                <input
+                  type="file"
+                  id="pptFile"
+                  accept=".ppt,.pptx"
+                  onChange={handlePptFileChange}
+                  className="file-input"
+                  disabled={uploadingPpt}
+                />
+                <label htmlFor="pptFile" className="file-upload-label">
+                  {uploadingPpt ? (
+                    <span className="upload-status">
+                      📤 Uploading... Please wait
+                    </span>
+                  ) : pptPreview ? (
+                    <span className="file-selected">
+                      ✅ PPT uploaded successfully
+                    </span>
+                  ) : (
+                    <span className="file-placeholder">
+                      📊 Choose PPT file (Max 10MB)
+                    </span>
+                  )}
+                </label>
+                {errors.pptFile && <span className="error-text">{errors.pptFile}</span>}
+                <small className="help-text">
+                  Upload a PowerPoint presentation to provide an overview of your event proposal
+                </small>
+                {pptPreview && (
+                  <div className="ppt-preview">
+                    <button 
+                      type="button"
+                      onClick={() => setShowPptViewer(true)}
+                      className="view-ppt-link"
+                    >
+                      📊 View Uploaded PPT
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {errors.submit && <div className="error-text">{errors.submit}</div>}
 
             <div className="form-actions">
@@ -683,6 +808,15 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
           </form>
         </div>
       </div>
+      
+      {/* PPT Viewer Modal */}
+      {showPptViewer && pptPreview && (
+        <PptViewer
+          pptUrl={pptPreview}
+          ideaTitle={formData.eventName || 'Event Presentation'}
+          onClose={() => setShowPptViewer(false)}
+        />
+      )}
     </div>
   );
 };
