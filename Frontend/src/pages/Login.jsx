@@ -142,9 +142,11 @@ export default function Login() {
       // Show success message before redirecting
       setTimeout(() => {
         // Redirect based on user role
-        if (role === 'SUPER_ADMIN') {
-          navigate('/superadmin/dashboard');
-        } else if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
+        // SUPER_ADMIN functionality disabled
+        // if (role === 'SUPER_ADMIN') {
+        //   navigate('/superadmin/dashboard');
+        // } else 
+        if (role === 'ADMIN' || role === 'CLUB_ADMIN') {
           navigate('/admin/dashboard');
         } else {
           navigate('/');

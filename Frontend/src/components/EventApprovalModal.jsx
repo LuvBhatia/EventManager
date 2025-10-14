@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { hallApi } from '../api/hall';
 import { httpClient } from '../api/http';
-import PptViewer from './PptViewer';
 import './EventApprovalModal.css';
 
 const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
@@ -23,14 +22,7 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [posterPreview, setPosterPreview] = useState(null);
-  const [pptFile, setPptFile] = useState(null);
-  const [pptPreview, setPptPreview] = useState(null);
-  const [uploadingPpt, setUploadingPpt] = useState(false);
-  const [availableHalls, setAvailableHalls] = useState([]);
-  const [suggestedHall, setSuggestedHall] = useState(null);
-  const [loadingHalls, setLoadingHalls] = useState(false);
-  const [hallsMessage, setHallsMessage] = useState('');
-  const [showPptViewer, setShowPptViewer] = useState(false);
+  const [allHalls, setAllHalls] = useState([]);
 
   const eventTypes = [
     'WORKSHOP',
@@ -44,6 +36,19 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
     'SPORTS',
     'OTHER'
   ];
+
+  // Fetch all halls on component mount for manual selection
+  useEffect(() => {
+    const fetchAllHalls = async () => {
+      try {
+        const halls = await hallApi.getAllHalls();
+        setAllHalls(halls || []);
+      } catch (error) {
+        console.error('Error fetching all halls:', error);
+      }
+    };
+    fetchAllHalls();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -66,27 +71,7 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
       }));
     }
 
-    // Fetch available halls when participants, start/end date/time change
-    if (['maxParticipants', 'startDate', 'endDate', 'startTime', 'endTime'].includes(name)) {
-      console.log(`Will fetch halls for ${name} = "${value}" after 1 second delay`);
-      
-      // Clear any existing timeout
-      if (window.hallFetchTimeout) {
-        clearTimeout(window.hallFetchTimeout);
-        console.log('Cleared previous timeout');
-      }
-      
-      // Debounce the hall fetching with longer delay
-      // Pass the updated form data to avoid closure issues
-      window.hallFetchTimeout = setTimeout(() => {
-        console.log('Timeout triggered, calling fetchAvailableHalls');
-        const updatedFormData = {
-          ...formData,
-          [name]: value
-        };
-        fetchAvailableHallsWithData(updatedFormData);
-      }, 1000); // Increased to 1 second
-    }
+    // Automated hall recommendation disabled - manual selection only
   };
 
   // Fetch available halls with specific data (to avoid closure issues)
@@ -153,12 +138,10 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
         setSuggestedHall(bestFit);
         const excessCapacity = bestFit.seatingCapacity - participants;
         const efficiencyMessage = excessCapacity <= 20 ? ' (Optimal fit)' : ' (Large hall)';
-        setHallsMessage(`${suitableHalls.length} suitable hall(s) available. Suggested: ${bestFit.name} (Capacity: ${bestFit.seatingCapacity})${efficiencyMessage}`);
+        setHallsMessage(`Recommended: ${bestFit.name} (Capacity: ${bestFit.seatingCapacity})${efficiencyMessage}. ${suitableHalls.length} suitable hall(s) available.`);
         
-        // Auto-select the suggested hall if no hall is currently selected
-        if (!data.selectedHall) {
-          setFormData(prev => ({ ...prev, selectedHall: bestFit.id.toString() }));
-        }
+        // Don't auto-select - let user manually choose
+        // Automated code still runs in background to provide recommendations
       }
     } catch (error) {
       console.error('Error fetching available halls:', error);
@@ -234,12 +217,10 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
         setSuggestedHall(bestFit);
         const excessCapacity = bestFit.seatingCapacity - participants;
         const efficiencyMessage = excessCapacity <= 20 ? ' (Optimal fit)' : ' (Large hall)';
-        setHallsMessage(`${suitableHalls.length} suitable hall(s) available. Suggested: ${bestFit.name} (Capacity: ${bestFit.seatingCapacity})${efficiencyMessage}`);
+        setHallsMessage(`Recommended: ${bestFit.name} (Capacity: ${bestFit.seatingCapacity})${efficiencyMessage}. ${suitableHalls.length} suitable hall(s) available.`);
         
-        // Auto-select the suggested hall if no hall is currently selected
-        if (!formData.selectedHall) {
-          setFormData(prev => ({ ...prev, selectedHall: bestFit.id.toString() }));
-        }
+        // Don't auto-select - let user manually choose
+        // Automated code still runs in background to provide recommendations
       }
     } catch (error) {
       console.error('Error fetching available halls:', error);
@@ -293,78 +274,7 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
     }
   };
 
-  const handlePptFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Validate file type
-    const allowedTypes = [
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      setErrors(prev => ({
-        ...prev,
-        pptFile: 'Please upload a valid PPT or PPTX file'
-      }));
-      return;
-    }
-
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors(prev => ({
-        ...prev,
-        pptFile: 'File size must be less than 10MB'
-      }));
-      return;
-    }
-
-    setPptFile(file);
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors.pptFile;
-      return newErrors;
-    });
-
-    // Upload file immediately
-    await uploadPptFile(file);
-  };
-
-  const uploadPptFile = async (file) => {
-    setUploadingPpt(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('http://localhost:8080/api/upload/ppt', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload PPT file');
-      }
-
-      const result = await response.json();
-      setFormData(prev => ({
-        ...prev,
-        pptFileUrl: result.url
-      }));
-      setPptPreview(result.url);
-    } catch (error) {
-      console.error('Error uploading PPT:', error);
-      setErrors(prev => ({
-        ...prev,
-        pptFile: 'Failed to upload PPT file. Please try again.'
-      }));
-    } finally {
-      setUploadingPpt(false);
-    }
-  };
+  // PPT upload removed from form
 
   const validateForm = () => {
     const newErrors = {};
@@ -680,32 +590,22 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="selectedHall">Hall Selection</label>
+                <label htmlFor="selectedHall">Hall Selection *</label>
                 <select
                   id="selectedHall"
                   name="selectedHall"
                   value={formData.selectedHall}
                   onChange={handleInputChange}
                   className={errors.selectedHall ? 'error' : ''}
-                  disabled={loadingHalls || availableHalls.length === 0}
                 >
-                  <option value="">
-                    {loadingHalls ? 'Loading halls...' : 
-                     availableHalls.length === 0 ? 'No halls available' : 'Select a hall'}
-                  </option>
-                  {availableHalls.map(hall => (
+                  <option value="">Select a hall</option>
+                  {allHalls.map(hall => (
                     <option key={hall.id} value={hall.id}>
-                      {hall.name} (Capacity: {hall.seatingCapacity})
-                      {suggestedHall && hall.id === suggestedHall.id ? ' - Recommended' : ''}
+                      {hall.name} (Capacity: {hall.seatingCapacity}) - {hall.location}
                     </option>
                   ))}
                 </select>
                 {errors.selectedHall && <span className="error-text">{errors.selectedHall}</span>}
-                {hallsMessage && (
-                  <small className={`hall-message ${availableHalls.length === 0 ? 'error-text' : 'success-text'}`}>
-                    {hallsMessage}
-                  </small>
-                )}
               </div>
             </div>
 
@@ -741,50 +641,7 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
               )}
             </div>
 
-            {/* PPT Upload Section */}
-            <div className="form-group">
-              <label htmlFor="pptFile">Event Presentation (PPT/PPTX)</label>
-              <div className="file-upload-section">
-                <input
-                  type="file"
-                  id="pptFile"
-                  accept=".ppt,.pptx"
-                  onChange={handlePptFileChange}
-                  className="file-input"
-                  disabled={uploadingPpt}
-                />
-                <label htmlFor="pptFile" className="file-upload-label">
-                  {uploadingPpt ? (
-                    <span className="upload-status">
-                      📤 Uploading... Please wait
-                    </span>
-                  ) : pptPreview ? (
-                    <span className="file-selected">
-                      ✅ PPT uploaded successfully
-                    </span>
-                  ) : (
-                    <span className="file-placeholder">
-                      📊 Choose PPT file (Max 10MB)
-                    </span>
-                  )}
-                </label>
-                {errors.pptFile && <span className="error-text">{errors.pptFile}</span>}
-                <small className="help-text">
-                  Upload a PowerPoint presentation to provide an overview of your event proposal
-                </small>
-                {pptPreview && (
-                  <div className="ppt-preview">
-                    <button 
-                      type="button"
-                      onClick={() => setShowPptViewer(true)}
-                      className="view-ppt-link"
-                    >
-                      📊 View Uploaded PPT
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* PPT Upload Section Removed */}
 
             {errors.submit && <div className="error-text">{errors.submit}</div>}
 
@@ -809,14 +666,7 @@ const EventApprovalModal = ({ proposal, onClose, onApprove }) => {
         </div>
       </div>
       
-      {/* PPT Viewer Modal */}
-      {showPptViewer && pptPreview && (
-        <PptViewer
-          pptUrl={pptPreview}
-          ideaTitle={formData.eventName || 'Event Presentation'}
-          onClose={() => setShowPptViewer(false)}
-        />
-      )}
+      {/* PPT Viewer Modal Removed */}
     </div>
   );
 };

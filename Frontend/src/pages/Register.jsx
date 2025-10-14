@@ -35,13 +35,14 @@ export default function Register() {
       label: "Club Admin",
       description: "Manage your club, create events, and review ideas",
       icon: "🏢"
-    },
-    {
-      value: "SUPER_ADMIN",
-      label: "Super Admin",
-      description: "Platform administration and oversight",
-      icon: "👑"
     }
+    // SUPER_ADMIN role disabled
+    // {
+    //   value: "SUPER_ADMIN",
+    //   label: "Super Admin",
+    //   description: "Platform administration and oversight",
+    //   icon: "👑"
+    // }
   ];
 
   const checkPasswordStrength = (password) => {

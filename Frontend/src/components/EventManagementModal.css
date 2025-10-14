@@ -114,6 +114,92 @@
   border: 1px solid #fecaca;
 }
 
+/* Toggle Section */
+.toggle-section {
+  margin: 24px 0;
+}
+
+.toggle-label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.toggle-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.toggle-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.toggle-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-option:hover {
+  border-color: #a855f7;
+  background: #faf5ff;
+}
+
+.toggle-option.active {
+  border-color: #7c3aed;
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+.toggle-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggle-text strong {
+  font-size: 15px;
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.toggle-text small {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.toggle-option.active .toggle-text strong {
+  color: #7c3aed;
+}
+
+.toggle-option.active .toggle-text small {
+  color: #5b21b6;
+}
+
 /* Idea submission section */
 .idea-submission-section {
   background-color: #f8f9ff;
@@ -334,6 +420,11 @@
   .form-row {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .toggle-options {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
   
   .modal-header {

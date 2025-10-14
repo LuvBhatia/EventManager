@@ -41,18 +41,20 @@ public class AuthController {
                         .body(Map.of("error", "role must be one of STUDENT, CLUB_ADMIN, SUPER_ADMIN"));
             }
 
-            // Handle super admin registration differently
+            // SUPER_ADMIN functionality disabled - reject super admin registration attempts
             if (role == Role.SUPER_ADMIN) {
-                try {
-                    superAdminRequestService.createSuperAdminRequest(req.getName(), req.getEmail(), req.getPassword());
-                    return ResponseEntity.ok(Map.of(
-                            "message", "Super admin request submitted successfully. Please wait for approval from an existing super admin.",
-                            "type", "super_admin_request"
-                    ));
-                } catch (IllegalArgumentException e) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("error", e.getMessage()));
-                }
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Super admin registration is currently disabled"));
+                // try {
+                //     superAdminRequestService.createSuperAdminRequest(req.getName(), req.getEmail(), req.getPassword());
+                //     return ResponseEntity.ok(Map.of(
+                //             "message", "Super admin request submitted successfully. Please wait for approval from an existing super admin.",
+                //             "type", "super_admin_request"
+                //     ));
+                // } catch (IllegalArgumentException e) {
+                //     return ResponseEntity.badRequest()
+                //             .body(Map.of("error", e.getMessage()));
+                // }
             } else {
                 // Regular registration for students and club admins
                 userService.register(req.getName(), req.getEmail(), req.getPassword(), role);
@@ -75,6 +77,11 @@ public class AuthController {
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
+        }
+
+        // SUPER_ADMIN functionality disabled - prevent super admin login
+        if (user.getRole() == Role.SUPER_ADMIN) {
+            return ResponseEntity.status(403).body(Map.of("error", "Super admin access is currently disabled"));
         }
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());

@@ -62,15 +62,42 @@ public class EventService {
     }
     
     public List<EventDto> getActiveEventsForStudents() {
-        return eventRepository.findAll().stream()
-                .filter(event -> event.getIsActive() == null || event.getIsActive()) // Show active events or null isActive (backwards compatibility)
-                .filter(event -> event.getStatus() == Event.EventStatus.PUBLISHED || 
-                                 event.getStatus() == Event.EventStatus.APPROVED) // Show both PUBLISHED and APPROVED events
-                .filter(event -> event.getApprovalStatus() == null || 
-                                 event.getApprovalStatus() == Event.ApprovalStatus.APPROVED) // Approved OR null (old events without approval workflow)
-                .filter(event -> event.getStartDate() != null && event.getEndDate() != null) // Must have dates
-                // Students should stop seeing the event as soon as it starts
-                .filter(event -> event.getStartDate().isAfter(java.time.LocalDateTime.now()))
+        List<Event> allEvents = eventRepository.findAll();
+        log.info("Total events in database: {}", allEvents.size());
+        
+        return allEvents.stream()
+                .peek(event -> log.debug("Checking event: {} - isActive: {}, status: {}, approvalStatus: {}, startDate: {}, endDate: {}", 
+                    event.getTitle(), event.getIsActive(), event.getStatus(), event.getApprovalStatus(), 
+                    event.getStartDate(), event.getEndDate()))
+                .filter(event -> {
+                    boolean isActive = event.getIsActive() == null || event.getIsActive();
+                    if (!isActive) log.debug("Event {} filtered out: not active", event.getTitle());
+                    return isActive;
+                })
+                .filter(event -> {
+                    boolean statusOk = event.getStatus() == Event.EventStatus.PUBLISHED || 
+                                      event.getStatus() == Event.EventStatus.APPROVED;
+                    if (!statusOk) log.debug("Event {} filtered out: status is {}", event.getTitle(), event.getStatus());
+                    return statusOk;
+                })
+                .filter(event -> {
+                    boolean approvalOk = event.getApprovalStatus() == null || 
+                                        event.getApprovalStatus() == Event.ApprovalStatus.APPROVED;
+                    if (!approvalOk) log.debug("Event {} filtered out: approval status is {}", event.getTitle(), event.getApprovalStatus());
+                    return approvalOk;
+                })
+                .filter(event -> {
+                    boolean hasDates = event.getStartDate() != null && event.getEndDate() != null;
+                    if (!hasDates) log.debug("Event {} filtered out: missing dates", event.getTitle());
+                    return hasDates;
+                })
+                .filter(event -> {
+                    boolean isFuture = event.getStartDate().isAfter(java.time.LocalDateTime.now());
+                    if (!isFuture) log.debug("Event {} filtered out: start date {} is not in future (now: {})", 
+                        event.getTitle(), event.getStartDate(), java.time.LocalDateTime.now());
+                    return isFuture;
+                })
+                .peek(event -> log.info("Event {} passed all filters and will be shown", event.getTitle()))
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -144,6 +171,22 @@ public class EventService {
             log.info("Creating event with idea submission deadline: {}", eventDto.getIdeaSubmissionDeadline());
         }
         
+        // Fetch hall if hallId is provided
+        Hall hall = null;
+        if (eventDto.getHallId() != null) {
+            hall = hallRepository.findById(eventDto.getHallId())
+                    .orElseThrow(() -> new RuntimeException("Hall not found with id: " + eventDto.getHallId()));
+            log.info("Assigning hall: {} to event", hall.getName());
+        }
+        
+        // Determine approval status based on event type
+        // Direct events (acceptsIdeas = false) are auto-approved
+        // Idea collection events (acceptsIdeas = true) need approval
+        boolean isDirectEvent = eventDto.getAcceptsIdeas() != null && !eventDto.getAcceptsIdeas();
+        Event.ApprovalStatus approvalStatus = isDirectEvent ? Event.ApprovalStatus.APPROVED : Event.ApprovalStatus.PENDING;
+        Event.EventStatus status = isDirectEvent ? Event.EventStatus.APPROVED : 
+                                   (eventDto.getStatus() != null ? eventDto.getStatus() : Event.EventStatus.PUBLISHED);
+        
         Event event = Event.builder()
                 .title(eventDto.getTitle())
                 .description(eventDto.getDescription())
@@ -156,17 +199,24 @@ public class EventService {
                 .maxParticipants(eventDto.getMaxParticipants())
                 .currentParticipants(0)
                 .registrationFee(eventDto.getRegistrationFee() != null ? eventDto.getRegistrationFee() : 0.0)
-                .status(eventDto.getStatus() != null ? eventDto.getStatus() : Event.EventStatus.DRAFT)
+                .status(status)
                 .type(eventDto.getType())
                 .club(club)
                 .organizer(organizer)
+                .hall(hall)
                 .tags(eventDto.getTags())
                 .imageUrl(eventDto.getImageUrl())
                 .isActive(true)
+                .approvalStatus(approvalStatus)
+                .approvedBy(isDirectEvent ? organizer : null)
+                .approvalDate(isDirectEvent ? LocalDateTime.now() : null)
                 .build();
         
         Event savedEvent = eventRepository.save(event);
         log.info("Created new event: {} by organizer: {}", savedEvent.getTitle(), organizer.getName());
+        log.info("Event details - ID: {}, Status: {}, ApprovalStatus: {}, AcceptsIdeas: {}, StartDate: {}, EndDate: {}, IsActive: {}", 
+            savedEvent.getId(), savedEvent.getStatus(), savedEvent.getApprovalStatus(), 
+            savedEvent.getAcceptsIdeas(), savedEvent.getStartDate(), savedEvent.getEndDate(), savedEvent.getIsActive());
         
         // Send notification to club members
         notificationService.createNotification(
@@ -201,6 +251,16 @@ public class EventService {
         event.setType(eventDto.getType());
         event.setTags(eventDto.getTags());
         event.setImageUrl(eventDto.getImageUrl());
+        
+        // Update hall if hallId is provided
+        if (eventDto.getHallId() != null) {
+            Hall hall = hallRepository.findById(eventDto.getHallId())
+                    .orElseThrow(() -> new RuntimeException("Hall not found with id: " + eventDto.getHallId()));
+            event.setHall(hall);
+            log.info("Updated hall for event to: {}", hall.getName());
+        } else {
+            event.setHall(null);
+        }
         
         Event savedEvent = eventRepository.save(event);
         log.info("Updated event: {}", savedEvent.getTitle());
@@ -525,13 +585,16 @@ public class EventService {
             originalEvent.setMaxParticipants(maxParticipants);
             originalEvent.setRegistrationFee(registrationFee);
             originalEvent.setDescription(description);
-            // Set to PENDING_APPROVAL - waiting for Super Admin approval
-            originalEvent.setStatus(Event.EventStatus.PENDING_APPROVAL);
-            originalEvent.setApprovalStatus(Event.ApprovalStatus.PENDING);
+            // Since super admin is disabled, club admin approval is final
+            // Auto-approve the event when club admin submits the proposal
+            originalEvent.setStatus(Event.EventStatus.APPROVED);
+            originalEvent.setApprovalStatus(Event.ApprovalStatus.APPROVED);
             originalEvent.setSubmittedForApprovalDate(java.time.LocalDateTime.now());
+            originalEvent.setApprovalDate(java.time.LocalDateTime.now());
+            originalEvent.setApprovedBy(originalEvent.getOrganizer()); // Club admin approves their own event
             originalEvent.setUpdatedAt(java.time.LocalDateTime.now());
             
-            log.info("Event '{}' submitted for Super Admin approval", eventName);
+            log.info("Event '{}' auto-approved by club admin (super admin disabled)", eventName);
             
             // Assign hall if provided
             if (hallId != null) {
@@ -707,21 +770,22 @@ public class EventService {
     }
     
     @Transactional
-    public EventDto approveEvent(Long eventId, Long superAdminId) {
+    public EventDto approveEvent(Long eventId, Long adminId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
         
-        if (event.getStatus() != Event.EventStatus.PENDING_APPROVAL) {
+        if (event.getStatus() != Event.EventStatus.PENDING_APPROVAL && event.getStatus() != Event.EventStatus.PUBLISHED) {
             throw new RuntimeException("Event is not pending approval");
         }
         
-        User superAdmin = userRepository.findById(superAdminId)
-                .orElseThrow(() -> new RuntimeException("Super admin not found"));
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
         
         // Update approval status and make it visible to students
-        event.setStatus(Event.EventStatus.PUBLISHED); // Set to PUBLISHED so it appears in student/club dashboards
+        // Since super admin is disabled, club admin approval is final
+        event.setStatus(Event.EventStatus.APPROVED);
         event.setApprovalStatus(Event.ApprovalStatus.APPROVED);
-        event.setApprovedBy(superAdmin);
+        event.setApprovedBy(admin);
         event.setApprovalDate(LocalDateTime.now());
         event.setRejectionReason(null);
         
@@ -731,23 +795,23 @@ public class EventService {
         notificationService.createNotification(
                 event.getOrganizer().getId(),
                 "Event Approved",
-                String.format("Your event '%s' has been approved by Super Admin and is now visible to students!", event.getTitle()),
+                String.format("Your event '%s' has been approved and is now visible to students!", event.getTitle()),
                 com.campus.EventInClubs.domain.model.Notification.NotificationType.SYSTEM,
                 event.getId(),
                 "EVENT"
         );
         
-        log.info("Event '{}' approved by Super Admin {}", event.getTitle(), superAdmin.getName());
+        log.info("Event '{}' approved by club admin {}", event.getTitle(), admin.getName());
         
         return convertToDto(savedEvent);
     }
     
     @Transactional
-    public EventDto rejectEvent(Long eventId, Long superAdminId, String rejectionReason) {
+    public EventDto rejectEvent(Long eventId, Long adminId, String rejectionReason) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
         
-        if (event.getStatus() != Event.EventStatus.PENDING_APPROVAL) {
+        if (event.getStatus() != Event.EventStatus.PENDING_APPROVAL && event.getStatus() != Event.EventStatus.PUBLISHED) {
             throw new RuntimeException("Event is not pending approval");
         }
         
@@ -755,14 +819,14 @@ public class EventService {
             throw new RuntimeException("Rejection reason is required");
         }
         
-        User superAdmin = userRepository.findById(superAdminId)
-                .orElseThrow(() -> new RuntimeException("Super admin not found"));
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
         
         // Update rejection status
         event.setStatus(Event.EventStatus.REJECTED);
         event.setApprovalStatus(Event.ApprovalStatus.REJECTED);
         event.setRejectionReason(rejectionReason);
-        event.setApprovedBy(superAdmin);
+        event.setApprovedBy(admin);
         event.setApprovalDate(LocalDateTime.now());
         
         Event savedEvent = eventRepository.save(event);
@@ -777,8 +841,8 @@ public class EventService {
                 "EVENT"
         );
         
-        log.info("Event '{}' rejected by Super Admin {} with reason: {}", 
-                event.getTitle(), superAdmin.getName(), rejectionReason);
+        log.info("Event '{}' rejected by club admin {} with reason: {}", 
+                event.getTitle(), admin.getName(), rejectionReason);
         
         return convertToDto(savedEvent);
     }
