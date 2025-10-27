@@ -12,7 +12,6 @@ export default function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
-  const [pendingClubs, setPendingClubs] = useState([]);
   const [users, setUsers] = useState([]);
   const [analytics, setAnalytics] = useState({});
   const [pendingSuperAdminRequests, setPendingSuperAdminRequests] = useState(0);
@@ -27,7 +26,6 @@ export default function SuperAdminDashboard() {
       await Promise.all([
         fetchClubs(),
         fetchEvents(),
-        fetchPendingClubs(),
         fetchUsers(),
         fetchAnalytics(),
         fetchPendingSuperAdminRequests()
@@ -56,16 +54,6 @@ export default function SuperAdminDashboard() {
     } catch (error) {
       console.error('Error fetching events:', error);
       setEvents([]);
-    }
-  };
-
-  const fetchPendingClubs = async () => {
-    try {
-      const response = await clubApi.getPendingClubs();
-      setPendingClubs(response);
-    } catch (error) {
-      console.error('Error fetching pending clubs:', error);
-      setPendingClubs([]);
     }
   };
 
@@ -99,32 +87,6 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleApprove = async (clubId) => {
-    try {
-      await clubApi.approveClub(clubId);
-      setPendingClubs(prev => prev.filter(club => club.id !== clubId));
-      console.log('Approved club:', clubId);
-      // Refresh data to update counts
-      fetchAllData();
-    } catch (error) {
-      console.error('Error approving club:', error);
-      alert('Failed to approve club. Please try again.');
-    }
-  };
-
-  const handleReject = async (clubId) => {
-    try {
-      await clubApi.rejectClub(clubId);
-      setPendingClubs(prev => prev.filter(club => club.id !== clubId));
-      console.log('Rejected club:', clubId);
-      // Refresh data to update counts
-      fetchAllData();
-    } catch (error) {
-      console.error('Error rejecting club:', error);
-      alert('Failed to reject club. Please try again.');
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('superAdminToken');
     localStorage.removeItem('userRole');
@@ -143,14 +105,6 @@ export default function SuperAdminDashboard() {
           <div className="stat-content">
             <h3>{clubs.length}</h3>
             <p>Active Clubs</p>
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-icon">⏳</div>
-          <div className="stat-content">
-            <h3>{pendingClubs.length}</h3>
-            <p>Pending Approvals</p>
           </div>
         </div>
         
@@ -198,60 +152,6 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       </div>
-    </div>
-  );
-
-  const renderClubApprovals = () => (
-    <div className="club-approvals-section">
-      <div className="section-header">
-        <h2>Club Approval Requests</h2>
-        <span className="pending-count">{pendingClubs.length} pending</span>
-      </div>
-
-      {pendingClubs.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">✅</div>
-          <h3>No Pending Approvals</h3>
-          <p>All club registration requests have been processed.</p>
-        </div>
-      ) : (
-        <div className="pending-clubs-grid">
-          {pendingClubs.map(club => (
-            <div key={club.id} className="pending-club-card">
-              <div className="club-header">
-                <h3>{club.name}</h3>
-                <span className="club-category">{club.category}</span>
-              </div>
-              
-              <div className="club-details">
-                <span className="club-name">{club.name}</span>
-                <span className="club-category">{club.category}</span>
-                <span className="club-admin">Admin: {club.adminUserName || 'Unknown'}</span>
-                <span className="club-date">Submitted: {new Date(club.createdAt).toLocaleDateString()}</span>
-              </div>
-              
-              <div className="club-description">
-                <p>{club.description}</p>
-              </div>
-              
-              <div className="approval-actions">
-                <button 
-                  className="btn-success"
-                  onClick={() => handleApprove(club.id)}
-                >
-                  ✅ Approve
-                </button>
-                <button 
-                  className="btn-danger"
-                  onClick={() => handleReject(club.id)}
-                >
-                  ❌ Reject
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 
@@ -313,8 +213,6 @@ export default function SuperAdminDashboard() {
     switch (activeTab) {
       case 'overview':
         return renderOverview();
-      case 'club-approvals':
-        return renderClubApprovals();
       case 'event-approvals':
         return <SuperAdminApprovalDashboard />;
       case 'super-admin-requests':
@@ -340,16 +238,6 @@ export default function SuperAdminDashboard() {
           >
             <span className="nav-icon">📊</span>
             Overview
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'club-approvals' ? 'active' : ''}`}
-            onClick={() => setActiveTab('club-approvals')}
-          >
-            <span className="nav-icon">⏳</span>
-            Club Approvals
-            {pendingClubs.length > 0 && (
-              <span className="nav-badge">{pendingClubs.length}</span>
-            )}
           </button>
           <button
             className={`nav-item ${activeTab === 'event-approvals' ? 'active' : ''}`}

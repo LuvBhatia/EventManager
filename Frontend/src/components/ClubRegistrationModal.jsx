@@ -198,7 +198,7 @@ export default function ClubRegistrationModal({ isOpen, onClose, onSubmit }) {
           </div>
 
           <div className="form-notice">
-            <p><strong>Note:</strong> Your club registration will be pending approval by a super admin before it becomes active.</p>
+            <p><strong>Note:</strong> Your club will be registered and active immediately upon submission.</p>
           </div>
 
           <div className="form-actions">

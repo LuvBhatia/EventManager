@@ -53,7 +53,7 @@ public class EventService {
                                  event.getStatus() == Event.EventStatus.APPROVED) // Show both PUBLISHED and APPROVED events
                 .filter(event -> event.getApprovalStatus() == Event.ApprovalStatus.APPROVED) // Must be approved by super admin
                 .filter(event -> event.getStartDate() != null && event.getEndDate() != null) // Must have dates (properly approved)
-                .filter(event -> event.getLocation() != null && !event.getLocation().trim().isEmpty()) // Must have location (properly approved)
+                // Location is optional - can be derived from hall or entered directly
                 .filter(event -> event.getMaxParticipants() != null) // Must have capacity (properly approved)
                 // Keep visible until 3 hours after the end time
                 .filter(event -> event.getEndDate().isAfter(java.time.LocalDateTime.now().minusHours(3)))
@@ -92,10 +92,10 @@ public class EventService {
                     return hasDates;
                 })
                 .filter(event -> {
-                    boolean isFuture = event.getStartDate().isAfter(java.time.LocalDateTime.now());
-                    if (!isFuture) log.debug("Event {} filtered out: start date {} is not in future (now: {})", 
-                        event.getTitle(), event.getStartDate(), java.time.LocalDateTime.now());
-                    return isFuture;
+                    boolean notEnded = event.getEndDate().isAfter(java.time.LocalDateTime.now());
+                    if (!notEnded) log.debug("Event {} filtered out: end date {} has passed (now: {})", 
+                        event.getTitle(), event.getEndDate(), java.time.LocalDateTime.now());
+                    return notEnded;
                 })
                 .peek(event -> log.info("Event {} passed all filters and will be shown", event.getTitle()))
                 .map(this::convertToDto)

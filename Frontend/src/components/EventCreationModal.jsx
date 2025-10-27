@@ -382,7 +382,7 @@ const EventCreationModal = ({ onClose, onSubmit, clubId, initialData = null, isR
                 </option>
                 {availableHalls.map(hall => (
                   <option key={hall.id} value={hall.id}>
-                    {hall.name} (Capacity: {hall.seatingCapacity})
+                    {hall.name} (Capacity: {hall.seatingCapacity}) - {hall.location}
                     {suggestedHall && hall.id === suggestedHall.id ? ' - Recommended' : ''}
                   </option>
                 ))}

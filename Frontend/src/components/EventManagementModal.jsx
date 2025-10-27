@@ -110,6 +110,26 @@ export default function EventManagementModal({
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
     
+    // If hall is selected, auto-fill location
+    if (name === 'hallId' && value) {
+      const selectedHall = halls.find(hall => hall.id.toString() === value);
+      if (selectedHall) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: newValue,
+          location: selectedHall.location || `${selectedHall.name}`
+        }));
+        // Clear location error if it was set
+        if (errors.location) {
+          setErrors(prev => ({
+            ...prev,
+            location: ''
+          }));
+        }
+        return;
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: newValue
@@ -551,7 +571,7 @@ export default function EventManagementModal({
                       <option value="">Select a hall</option>
                       {halls.map(hall => (
                         <option key={hall.id} value={hall.id}>
-                          {hall.name} (Capacity: {hall.capacity})
+                          {hall.name} (Capacity: {hall.seatingCapacity || hall.capacity}) - {hall.location}
                         </option>
                       ))}
                     </select>

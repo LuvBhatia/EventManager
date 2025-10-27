@@ -136,12 +136,12 @@ public class ClubService {
                 .eventCount(clubDto.getEventCount() != null ? clubDto.getEventCount() : 0)
                 .rating(clubDto.getRating() != null ? clubDto.getRating() : 0.0)
                 .adminUser(adminUser)
-                .isActive(false)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .isActive(true) // Auto-approve new clubs
+                .approvalStatus(ApprovalStatus.APPROVED) // Auto-approve new clubs
                 .build();
         
         Club savedClub = clubRepository.save(club);
-        log.info("Created new club: {}", savedClub.getName());
+        log.info("Created and auto-approved new club: {}", savedClub.getName());
         
         return convertToDto(savedClub);
     }
