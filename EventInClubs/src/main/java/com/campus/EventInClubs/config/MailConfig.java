@@ -43,22 +43,16 @@ public class MailConfig {
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.auth", "true");
         
-        // Use SSL on port 465 (not STARTTLS on 587)
-        props.put("mail.smtp.ssl.enable", "true");
+        // Use STARTTLS on port 587 (port 465 is blocked by Render)
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
         props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
-        props.put("mail.smtp.starttls.enable", "false");
-        props.put("mail.smtp.starttls.required", "false");
-        
-        props.put("mail.smtp.connectiontimeout", "5000");
-        props.put("mail.smtp.timeout", "5000");
-        props.put("mail.smtp.writetimeout", "5000");
-        props.put("mail.debug", "true"); // Enable debug logging
-        
-        // Additional settings for cloud deployment
         props.put("mail.smtp.ssl.protocols", "TLSv1.2");
-        props.put("mail.smtp.socketFactory.port", String.valueOf(port));
-        props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
-        props.put("mail.smtp.socketFactory.fallback", "false");
+        
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "10000");
+        props.put("mail.smtp.writetimeout", "10000");
+        props.put("mail.debug", "true"); // Enable debug logging
         
         log.info("✅ JavaMailSender configured successfully");
         
