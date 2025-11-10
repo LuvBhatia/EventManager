@@ -168,6 +168,7 @@ public class EventService {
                 .ideaSubmissionDeadline(eventDto.getIdeaSubmissionDeadline())
                 .acceptsIdeas(eventDto.getAcceptsIdeas() != null ? eventDto.getAcceptsIdeas() : true)
                 .location(eventDto.getLocation())
+                .hallName(eventDto.getHallName())
                 .maxParticipants(eventDto.getMaxParticipants())
                 .currentParticipants(0)
                 .registrationFee(eventDto.getRegistrationFee() != null ? eventDto.getRegistrationFee() : 0.0)
@@ -220,6 +221,7 @@ public class EventService {
         event.setIdeaSubmissionDeadline(eventDto.getIdeaSubmissionDeadline());
         event.setAcceptsIdeas(eventDto.getAcceptsIdeas());
         event.setLocation(eventDto.getLocation());
+        event.setHallName(eventDto.getHallName());
         event.setMaxParticipants(eventDto.getMaxParticipants());
         event.setRegistrationFee(eventDto.getRegistrationFee());
         
@@ -472,7 +474,7 @@ public class EventService {
                 .isExpired(eventCleanupService.isEventExpired(event))
                 .isViewOnly(eventCleanupService.isEventInViewOnlyMode(event))
                 .hallId(event.getHall() != null ? event.getHall().getId() : null)
-                .hallName(event.getHall() != null ? event.getHall().getName() : null)
+                .hallName(event.getHallName() != null ? event.getHallName() : (event.getHall() != null ? event.getHall().getName() : null))
                 .hallCapacity(event.getHall() != null ? event.getHall().getSeatingCapacity() : null)
                 .approvalStatus(event.getApprovalStatus())
                 .rejectionReason(event.getRejectionReason())
@@ -544,7 +546,7 @@ public class EventService {
             .isExpired(eventCleanupService.isEventExpired(event))
             .isViewOnly(eventCleanupService.isEventInViewOnlyMode(event))
             .hallId(event.getHall() != null ? event.getHall().getId() : null)
-            .hallName(event.getHall() != null ? event.getHall().getName() : null)
+            .hallName(event.getHallName() != null ? event.getHallName() : (event.getHall() != null ? event.getHall().getName() : null))
             .hallCapacity(event.getHall() != null ? event.getHall().getSeatingCapacity() : null)
             .approvalStatus(event.getApprovalStatus())
             .rejectionReason(event.getRejectionReason())

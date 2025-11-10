@@ -49,6 +49,9 @@ public class Event {
     @Column(nullable = true)
     private String location;
     
+    @Column(name = "hall_name")
+    private String hallName;
+    
     @Column(name = "max_participants")
     private Integer maxParticipants;
     
