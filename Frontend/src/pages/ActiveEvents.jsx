@@ -22,10 +22,46 @@ const ActiveEvents = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [userRegistrations, setUserRegistrations] = useState(new Set()); // Track registered events
 
   useEffect(() => {
     fetchActiveEvents();
+    fetchUserRegistrations();
   }, []);
+
+  const fetchUserRegistrations = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user || !user.id) return;
+
+      // Fetch both individual and team registrations
+      const [individualResponse, teamResponse] = await Promise.all([
+        http.get(`/event-registrations/user/${user.id}`),
+        http.get(`/team-registrations/user/${user.id}`)
+      ]);
+
+      const registeredEventIds = new Set();
+      
+      // Add individual registrations
+      if (individualResponse.data) {
+        individualResponse.data.forEach(reg => {
+          registeredEventIds.add(reg.eventId);
+        });
+      }
+      
+      // Add team registrations
+      if (teamResponse.data) {
+        teamResponse.data.forEach(reg => {
+          registeredEventIds.add(reg.eventId);
+        });
+      }
+
+      setUserRegistrations(registeredEventIds);
+      console.log('User registered for events:', Array.from(registeredEventIds));
+    } catch (error) {
+      console.error('Error fetching user registrations:', error);
+    }
+  };
 
   const fetchActiveEvents = async () => {
     try {
@@ -190,6 +226,10 @@ const ActiveEvents = () => {
       if (response.status === 200) {
         const result = response.data;
         alert('Registration successful! You will receive a confirmation notification.');
+        
+        // Add event to user's registered events
+        setUserRegistrations(prev => new Set([...prev, selectedEvent.id]));
+        
         setShowRegistrationModal(false);
         fetchActiveEvents(); // Refresh events to update registration count
       } else {
@@ -387,7 +427,11 @@ const ActiveEvents = () => {
                 )}
 
                 <div className="event-actions">
-                  {isRegistrationOpen(event) ? (
+                  {userRegistrations.has(event.id) ? (
+                    <button className="register-btn registered" disabled>
+                      ✅ Registered
+                    </button>
+                  ) : isRegistrationOpen(event) ? (
                     <button 
                       className="register-btn"
                       onClick={() => handleRegisterClick(event)}

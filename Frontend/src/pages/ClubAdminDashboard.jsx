@@ -42,6 +42,38 @@ export default function ClubAdminDashboard() {
   const [registrationsEventId, setRegistrationsEventId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [proposalStatusFilter, setProposalStatusFilter] = useState('all');
+  
+  // Auto-refresh active events when on active-events tab
+  useEffect(() => {
+    if (activeTab === 'active-events') {
+      // Refresh immediately when tab is opened
+      fetchActiveEvents();
+      
+      // Set up auto-refresh every 10 seconds
+      const interval = setInterval(() => {
+        console.log('Auto-refreshing active events...');
+        fetchActiveEvents();
+      }, 10000); // 10 seconds
+      
+      // Cleanup interval when tab changes or component unmounts
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+  
+  // Auto-refresh registrations when modal is open
+  useEffect(() => {
+    if (showRegistrationsModal && registrationsEventId) {
+      // Set up auto-refresh every 5 seconds
+      const interval = setInterval(() => {
+        console.log('Auto-refreshing registrations...');
+        refreshRegistrationsData(registrationsEventId);
+      }, 5000); // 5 seconds
+      
+      // Cleanup interval when modal closes
+      return () => clearInterval(interval);
+    }
+  }, [showRegistrationsModal, registrationsEventId]);
+  
   // Handle URL parameters for tab navigation
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -553,6 +585,89 @@ export default function ClubAdminDashboard() {
   const handleViewEventDetails = (event) => {
     // Create a detailed view modal or navigate to event details page
     alert(`Event Details:\n\nTitle: ${event.title}\nType: ${event.type}\nClub: ${event.clubName}\nStart: ${event.startDate ? new Date(event.startDate).toLocaleString() : 'Not set'}\nEnd: ${event.endDate ? new Date(event.endDate).toLocaleString() : 'Not set'}\nLocation: ${event.location || 'Not specified'}\nCapacity: ${event.maxParticipants || 'Unlimited'}\nFee: ${event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}`);
+  };
+
+  // Refresh registrations data without opening modal (for auto-refresh)
+  const refreshRegistrationsData = async (eventId) => {
+    try {
+      const ev = activeEvents.find(e => e.id === eventId);
+      
+      // Check if this is a team event
+      if (ev && ev.isTeamEvent) {
+        // Fetch team registrations
+        const response = await http.get(`/team-registrations/event/${eventId}`);
+        if (response.status === 200) {
+          const teamData = response.data;
+          // Transform team registrations - expand to individual members for attendance marking
+          const transformedData = teamData.flatMap(team => 
+            team.memberRollNumbers.map((rollNo, index) => ({
+              id: `${team.id}-${index}`,
+              teamId: team.id,
+              userName: team.memberNames && team.memberNames[index] ? team.memberNames[index] : 
+                        (index === 0 ? `${team.registeredByName} (Leader)` : `Team Member ${index + 1}`),
+              userEmail: team.memberEmails && team.memberEmails[index] ? team.memberEmails[index] :
+                         (index === 0 ? team.registeredByEmail || 'N/A' : 'N/A'),
+              rollNumber: rollNo,
+              status: team.status === 'REGISTERED' ? 'REGISTERED' : team.status,
+              registeredAt: team.registeredAt,
+              teamName: team.teamName,
+              // Store full team data for CSV export
+              fullTeam: {
+                teamName: team.teamName,
+                memberNames: team.memberNames ? team.memberNames.join(', ') : '',
+                memberEmails: team.memberEmails ? team.memberEmails.join(', ') : '',
+                memberRollNumbers: team.memberRollNumbers ? team.memberRollNumbers.join(', ') : ''
+              }
+            }))
+          );
+          // Initialize attendance map from localStorage for team events
+          const storageKey = `attendance:event:${eventId}`;
+          const saved = localStorage.getItem(storageKey);
+          let initialMap;
+          if (saved) {
+            try {
+              initialMap = JSON.parse(saved);
+            } catch (e) {
+              initialMap = {};
+            }
+          } else {
+            initialMap = transformedData.reduce((acc, reg) => {
+              acc[reg.id] = reg.status === 'ATTENDED';
+              return acc;
+            }, {});
+          }
+          
+          // Update registration statuses based on attendance map
+          const updatedData = transformedData.map(reg => ({
+            ...reg,
+            status: initialMap[reg.id] ? 'ATTENDED' : (initialMap[reg.id] === false ? 'NO_SHOW' : reg.status)
+          }));
+          
+          setRegistrations(updatedData);
+          setAttendanceMap(initialMap);
+        }
+      } else {
+        // Fetch individual registrations
+        const response = await http.get(`/event-registrations/event/${eventId}`);
+        if (response.status === 200) {
+          const data = response.data;
+          setRegistrations(data);
+          // Sync the visible registrations count on the Active Events card immediately
+          setActiveEvents(prev => (prev || []).map(ev => ev.id === eventId ? { ...ev, currentParticipants: (data || []).length } : ev));
+          const storageKey = `attendance:event:${eventId}`;
+          const saved = localStorage.getItem(storageKey);
+          const initialMap = (data || []).reduce((acc, reg) => {
+            acc[reg.id] = reg.status === 'ATTENDED';
+            return acc;
+          }, {});
+          // Always use the current status from backend as the source of truth
+          setAttendanceMap(initialMap);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing registrations:', error);
+      // Silently fail for auto-refresh
+    }
   };
 
   const handleViewRegistrations = async (eventId) => {
@@ -1355,7 +1470,27 @@ export default function ClubAdminDashboard() {
     <div className="active-events-section">
       <div className="section-header">
         <h2>Active Events</h2>
-        <p>Manage your published events with full details</p>
+        <p>Manage your published events with full details 
+          <span style={{ 
+            marginLeft: '10px', 
+            fontSize: '12px', 
+            color: '#4CAF50', 
+            fontWeight: '500',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <span style={{ 
+              display: 'inline-block', 
+              width: '8px', 
+              height: '8px', 
+              borderRadius: '50%', 
+              backgroundColor: '#4CAF50',
+              animation: 'pulse 2s ease-in-out infinite'
+            }}></span>
+            Auto-refreshing every 10s
+          </span>
+        </p>
       </div>
       
       {loading ? (
@@ -1685,7 +1820,30 @@ export default function ClubAdminDashboard() {
               backgroundColor: 'white',
               zIndex: 10
             }}>
-              <h2 style={{ margin: 0, fontSize: '24px' }}>📋 Attendance — {registrationsEventTitle}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 style={{ margin: 0, fontSize: '24px' }}>📋 Attendance — {registrationsEventTitle}</h2>
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: '#4CAF50', 
+                  fontWeight: '600',
+                  backgroundColor: '#E8F5E9',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <span style={{ 
+                    display: 'inline-block', 
+                    width: '6px', 
+                    height: '6px', 
+                    borderRadius: '50%', 
+                    backgroundColor: '#4CAF50',
+                    animation: 'pulse 2s ease-in-out infinite'
+                  }}></span>
+                  Auto-refresh
+                </span>
+              </div>
               <button 
                 style={{
                   background: 'none',

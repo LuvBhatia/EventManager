@@ -338,6 +338,18 @@
   box-shadow: none;
 }
 
+.register-btn.registered {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  cursor: default;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+}
+
+.register-btn.registered:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
