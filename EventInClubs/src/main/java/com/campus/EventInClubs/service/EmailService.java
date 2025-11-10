@@ -2,6 +2,7 @@ package com.campus.EventInClubs.service;
 
 import com.campus.EventInClubs.domain.model.Event;
 import com.campus.EventInClubs.domain.model.EventRegistration;
+import com.campus.EventInClubs.domain.model.TeamRegistration;
 import com.campus.EventInClubs.domain.model.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,8 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,11 +28,22 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
     
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        log.info("✅ EmailService initialized successfully");
+        log.info("📧 Configured email: {}", fromEmail);
+        log.info("📬 JavaMailSender bean: {}", mailSender != null ? "Available" : "NULL");
+    }
+    
     /**
      * Send registration confirmation email to student
      */
     public void sendRegistrationConfirmation(EventRegistration registration, String clubAdminEmail) {
         try {
+            log.info("Starting email send process for registration ID: {}", registration.getId());
+            log.info("From email configured as: {}", fromEmail);
+            log.info("Recipient: {}, Reply-to: {}", registration.getUser().getEmail(), clubAdminEmail);
+            
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             
@@ -42,17 +56,22 @@ public class EmailService {
             helper.setTo(student.getEmail());
             helper.setSubject("Registration Confirmed: " + event.getTitle());
             
+            log.info("Building email body for event: {}", event.getTitle());
             String emailBody = buildRegistrationEmail(registration, event, student);
             helper.setText(emailBody, true); // true = HTML email
             
+            log.info("Attempting to send email via SMTP...");
             mailSender.send(message);
-            log.info("Registration confirmation email sent to {} for event {}", student.getEmail(), event.getTitle());
+            log.info("✅ Registration confirmation email successfully sent to {} for event {}", student.getEmail(), event.getTitle());
             
         } catch (MessagingException e) {
-            log.error("Failed to send registration confirmation email", e);
+            log.error("❌ MessagingException while sending email: {}", e.getMessage(), e);
+            log.error("Email details - From: {}, To: {}, Event: {}", 
+                fromEmail, registration.getUser().getEmail(), registration.getEvent().getTitle());
             // Don't throw exception - email failure shouldn't break registration
         } catch (Exception e) {
-            log.error("Unexpected error sending registration confirmation email", e);
+            log.error("❌ Unexpected error sending registration confirmation email: {}", e.getMessage(), e);
+            log.error("Stack trace:", e);
         }
     }
     
@@ -255,5 +274,80 @@ public class EmailService {
             event.getClub().getName(),
             registration.getId()
         );
+    }
+    
+    /**
+     * Send team registration confirmation email to team leader
+     */
+    public void sendTeamLeaderConfirmation(TeamRegistration teamRegistration, User teamLeader, String clubAdminEmail) {
+        try {
+            log.info("Starting team leader email send process for team: {}", teamRegistration.getTeamName());
+            
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            Event event = teamRegistration.getEvent();
+            
+            helper.setFrom(fromEmail);
+            helper.setReplyTo(clubAdminEmail);
+            helper.setTo(teamLeader.getEmail());
+            helper.setSubject("Team Registration Confirmed: " + event.getTitle());
+            
+            String emailBody = buildTeamLeaderEmail(teamRegistration, event, teamLeader);
+            helper.setText(emailBody, true);
+            
+            mailSender.send(message);
+            log.info("✅ Team leader confirmation email sent to {} for team '{}'", teamLeader.getEmail(), teamRegistration.getTeamName());
+            
+        } catch (MessagingException e) {
+            log.error("❌ MessagingException sending team leader email: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("❌ Unexpected error sending team leader email: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Send team registration confirmation email to team member
+     */
+    public void sendTeamMemberConfirmation(TeamRegistration teamRegistration, String memberName, String memberEmail, String clubAdminEmail) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            Event event = teamRegistration.getEvent();
+            
+            helper.setFrom(fromEmail);
+            helper.setReplyTo(clubAdminEmail);
+            helper.setTo(memberEmail);
+            helper.setSubject("You're Part of Team: " + teamRegistration.getTeamName());
+            
+            String emailBody = buildTeamMemberEmail(teamRegistration, event, memberName);
+            helper.setText(emailBody, true);
+            
+            mailSender.send(message);
+            log.info("✅ Team member confirmation email sent to {}", memberEmail);
+            
+        } catch (MessagingException e) {
+            log.error("❌ MessagingException sending team member email to {}: {}", memberEmail, e.getMessage());
+        } catch (Exception e) {
+            log.error("❌ Unexpected error sending team member email to {}: {}", memberEmail, e.getMessage());
+        }
+    }
+    
+    private String buildTeamLeaderEmail(TeamRegistration tr, Event event, User leader) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM dd, yyyy 'at' hh:mm a");
+        List<String> memberNames = tr.getMemberNames() != null ? Arrays.asList(tr.getMemberNames().split(",")) : List.of();
+        List<String> memberEmails = tr.getMemberEmails() != null ? Arrays.asList(tr.getMemberEmails().split(",")) : List.of();
+        List<String> memberRolls = tr.getMemberRollNumbers() != null ? Arrays.asList(tr.getMemberRollNumbers().split(",")) : List.of();
+        StringBuilder members = new StringBuilder();
+        for (int i = 0; i < Math.max(memberNames.size(), Math.max(memberEmails.size(), memberRolls.size())); i++) {
+            members.append(String.format("<tr><td style='padding:8px'>%d</td><td style='padding:8px'>%s</td><td style='padding:8px'>%s</td><td style='padding:8px'>%s</td></tr>", i+1, i<memberNames.size()?memberNames.get(i):"N/A", i<memberEmails.size()?memberEmails.get(i):"N/A", i<memberRolls.size()?memberRolls.get(i):"N/A"));
+        }
+        return String.format("<!DOCTYPE html><html><head></head><body style='font-family:Arial'><h1>Team Registration Confirmed</h1><p>Dear %s,</p><p>Team <strong>%s</strong> registered for %s</p><p>Date: %s</p><p>Location: %s</p><p>Organizer: %s</p><p>Team Size: %d</p><p>Fee: %s</p><h3>Members:</h3><table border='1'>%s</table><p>Good luck!</p></body></html>", leader.getName(), tr.getTeamName(), event.getTitle(), event.getStartDate().format(formatter), event.getLocation()!=null?event.getLocation():"TBA", event.getClub().getName(), tr.getTeamSize(), event.getRegistrationFee()==null||event.getRegistrationFee()==0?"Free":"₹"+event.getRegistrationFee(), members.toString());
+    }
+    
+    private String buildTeamMemberEmail(TeamRegistration tr, Event event, String name) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM dd, yyyy 'at' hh:mm a");
+        return String.format("<!DOCTYPE html><html><head></head><body style='font-family:Arial'><h1>You're on a Team!</h1><p>Dear %s,</p><p>You've been added to Team <strong>%s</strong></p><p>Event: %s</p><p>Date: %s</p><p>Location: %s</p><p>Organizer: %s</p><p>Team Size: %d members</p><p>Please coordinate with your team leader and bring your student ID on the event day.</p><p>Good luck!</p></body></html>", name, tr.getTeamName(), event.getTitle(), event.getStartDate().format(formatter), event.getLocation()!=null?event.getLocation():"TBA", event.getClub().getName(), tr.getTeamSize());
     }
 }

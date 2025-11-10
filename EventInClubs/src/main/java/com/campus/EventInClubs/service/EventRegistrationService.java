@@ -51,6 +51,16 @@ public class EventRegistrationService {
             }
         }
         
+        // Check if email is already registered for this event (prevent duplicate email registrations)
+        String userEmail = user.getEmail();
+        log.info("Checking if email {} is already registered for event {}", userEmail, eventId);
+        boolean emailExists = registrationRepository.existsByEventIdAndUserEmail(eventId, userEmail);
+        log.info("Email exists check result: {}", emailExists);
+        if (emailExists) {
+            log.error("Duplicate registration attempt: email {} already registered for event {}", userEmail, eventId);
+            throw new RuntimeException("This email address is already registered for this event");
+        }
+        
         // Check capacity (count REGISTERED + ATTENDED + NO_SHOW towards capacity)
         Long currentRegistrations = registrationRepository.countActiveByEventId(eventId);
         if (event.getMaxParticipants() != null && currentRegistrations >= event.getMaxParticipants()) {
@@ -83,13 +93,20 @@ public class EventRegistrationService {
         
         // Send confirmation email to student
         try {
+            log.info("Attempting to send registration confirmation email to user {}", user.getEmail());
             String clubAdminEmail = event.getClub().getAdminUser().getEmail();
+            log.info("Club admin email: {}", clubAdminEmail);
+            
             EventRegistration savedRegistration = registrationRepository.findById(registration.getId()).orElse(null);
             if (savedRegistration != null) {
+                log.info("Saved registration found, calling email service...");
                 emailService.sendRegistrationConfirmation(savedRegistration, clubAdminEmail);
+                log.info("Email service call completed for registration {}", savedRegistration.getId());
+            } else {
+                log.warn("Saved registration not found for ID {}", registration.getId());
             }
         } catch (Exception e) {
-            log.error("Failed to send registration confirmation email", e);
+            log.error("Failed to send registration confirmation email to {}: {}", user.getEmail(), e.getMessage(), e);
             // Don't fail the registration if email fails
         }
         
