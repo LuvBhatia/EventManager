@@ -99,4 +99,24 @@ public class TeamRegistrationController {
                     .body(Map.of("error", "Internal server error"));
         }
     }
+    
+    @PutMapping("/{teamId}/attendance")
+    public ResponseEntity<?> updateMemberAttendance(
+            @PathVariable Long teamId,
+            @RequestParam int memberIndex,
+            @RequestParam boolean attended) {
+        try {
+            log.info("Updating attendance for team {}, member index {}: {}", teamId, memberIndex, attended);
+            TeamRegistrationDto updated = teamRegistrationService.updateMemberAttendance(teamId, memberIndex, attended);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            log.error("Error updating member attendance: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error updating member attendance", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Internal server error"));
+        }
+    }
 }

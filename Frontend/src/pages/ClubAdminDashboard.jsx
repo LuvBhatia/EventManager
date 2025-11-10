@@ -621,27 +621,20 @@ export default function ClubAdminDashboard() {
               }
             }))
           );
-          // Initialize attendance map from localStorage for team events
-          const storageKey = `attendance:event:${eventId}`;
-          const saved = localStorage.getItem(storageKey);
-          let initialMap;
-          if (saved) {
-            try {
-              initialMap = JSON.parse(saved);
-            } catch (e) {
-              initialMap = {};
-            }
-          } else {
-            initialMap = transformedData.reduce((acc, reg) => {
-              acc[reg.id] = reg.status === 'ATTENDED';
-              return acc;
-            }, {});
-          }
+          // Initialize attendance map from backend data
+          const initialMap = {};
+          teamData.forEach(team => {
+            team.memberRollNumbers.forEach((rollNo, index) => {
+              const regId = `${team.id}-${index}`;
+              const attended = team.memberAttendanceStatuses?.[index] || false;
+              initialMap[regId] = attended;
+            });
+          });
           
-          // Update registration statuses based on attendance map
+          // Update registration statuses based on attendance from backend
           const updatedData = transformedData.map(reg => ({
             ...reg,
-            status: initialMap[reg.id] ? 'ATTENDED' : (initialMap[reg.id] === false ? 'NO_SHOW' : reg.status)
+            status: initialMap[reg.id] ? 'ATTENDED' : 'REGISTERED'
           }));
           
           setRegistrations(updatedData);
@@ -655,8 +648,6 @@ export default function ClubAdminDashboard() {
           setRegistrations(data);
           // Sync the visible registrations count on the Active Events card immediately
           setActiveEvents(prev => (prev || []).map(ev => ev.id === eventId ? { ...ev, currentParticipants: (data || []).length } : ev));
-          const storageKey = `attendance:event:${eventId}`;
-          const saved = localStorage.getItem(storageKey);
           const initialMap = (data || []).reduce((acc, reg) => {
             acc[reg.id] = reg.status === 'ATTENDED';
             return acc;
@@ -704,27 +695,20 @@ export default function ClubAdminDashboard() {
               }
             }))
           );
-          // Initialize attendance map from localStorage for team events
-          const storageKey = `attendance:event:${eventId}`;
-          const saved = localStorage.getItem(storageKey);
-          let initialMap;
-          if (saved) {
-            try {
-              initialMap = JSON.parse(saved);
-            } catch (e) {
-              initialMap = {};
-            }
-          } else {
-            initialMap = transformedData.reduce((acc, reg) => {
-              acc[reg.id] = reg.status === 'ATTENDED';
-              return acc;
-            }, {});
-          }
+          // Initialize attendance map from backend data
+          const initialMap = {};
+          teamData.forEach(team => {
+            team.memberRollNumbers.forEach((rollNo, index) => {
+              const regId = `${team.id}-${index}`;
+              const attended = team.memberAttendanceStatuses?.[index] || false;
+              initialMap[regId] = attended;
+            });
+          });
           
-          // Update registration statuses based on attendance map
+          // Update registration statuses based on attendance from backend
           const updatedData = transformedData.map(reg => ({
             ...reg,
-            status: initialMap[reg.id] ? 'ATTENDED' : (initialMap[reg.id] === false ? 'NO_SHOW' : reg.status)
+            status: initialMap[reg.id] ? 'ATTENDED' : 'REGISTERED'
           }));
           
           setRegistrations(updatedData);
@@ -740,8 +724,6 @@ export default function ClubAdminDashboard() {
           setRegistrations(data);
           // Sync the visible registrations count on the Active Events card immediately
           setActiveEvents(prev => (prev || []).map(ev => ev.id === eventId ? { ...ev, currentParticipants: (data || []).length } : ev));
-          const storageKey = `attendance:event:${eventId}`;
-          const saved = localStorage.getItem(storageKey);
           const initialMap = (data || []).reduce((acc, reg) => {
             acc[reg.id] = reg.status === 'ATTENDED';
             return acc;
@@ -763,20 +745,12 @@ export default function ClubAdminDashboard() {
   const handleToggleAttendance = async (registrationId) => {
     const currentStatus = attendanceMap[registrationId];
     const newPresentStatus = !currentStatus;
-    const newStatus = newPresentStatus ? 'ATTENDED' : 'NO_SHOW';
+    const newStatus = newPresentStatus ? 'ATTENDED' : 'REGISTERED';
     
     console.log(`Toggling attendance for registration ${registrationId}: ${currentStatus} -> ${newPresentStatus} (${newStatus})`);
     
     // Update local state immediately for better UX
-    setAttendanceMap(prev => {
-      const updated = { ...prev, [registrationId]: newPresentStatus };
-      // Save to localStorage for team events
-      const ev = activeEvents.find(e => e.id === registrationsEventId);
-      if (ev?.isTeamEvent && registrationsEventId) {
-        localStorage.setItem(`attendance:event:${registrationsEventId}`, JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setAttendanceMap(prev => ({ ...prev, [registrationId]: newPresentStatus }));
     
     // Update the registrations list to reflect the new status
     const updatedRegistrations = registrations.map(reg => 
@@ -784,22 +758,28 @@ export default function ClubAdminDashboard() {
     );
     setRegistrations(updatedRegistrations);
     
-    // Save to backend (only for individual events, team events use localStorage)
+    // Save to backend
     const ev = activeEvents.find(e => e.id === registrationsEventId);
-    if (!ev?.isTeamEvent) {
-      try {
+    try {
+      if (ev?.isTeamEvent) {
+        // For team events, extract teamId and memberIndex from registrationId
+        const [teamId, memberIndex] = registrationId.split('-');
+        await http.put(`/team-registrations/${teamId}/attendance?memberIndex=${memberIndex}&attended=${newPresentStatus}`);
+        console.log(`Successfully updated attendance for team member ${registrationId}`);
+      } else {
+        // For individual events
         await http.put(`/event-registrations/${registrationId}/status?status=${newStatus}`);
         console.log(`Successfully updated attendance status for registration ${registrationId} to ${newStatus}`);
-      } catch (error) {
-        console.error('Error updating attendance status:', error);
-        // Revert on error
-        setAttendanceMap(prev => ({ ...prev, [registrationId]: currentStatus }));
-        const revertedRegistrations = registrations.map(reg => 
-          reg.id === registrationId ? { ...reg, status: currentStatus ? 'ATTENDED' : 'REGISTERED' } : reg
-        );
-        setRegistrations(revertedRegistrations);
-        alert('Failed to update attendance. Please try again.');
       }
+    } catch (error) {
+      console.error('Error updating attendance status:', error);
+      // Revert on error
+      setAttendanceMap(prev => ({ ...prev, [registrationId]: currentStatus }));
+      const revertedRegistrations = registrations.map(reg => 
+        reg.id === registrationId ? { ...reg, status: currentStatus ? 'ATTENDED' : 'REGISTERED' } : reg
+      );
+      setRegistrations(revertedRegistrations);
+      alert('Failed to update attendance. Please try again.');
     }
   };
 

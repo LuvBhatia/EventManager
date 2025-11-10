@@ -96,6 +96,11 @@ public class TeamRegistrationService {
                 .collect(Collectors.toList())) 
             : null;
         
+        // Initialize attendance statuses to false for all members
+        String attendanceStatuses = memberRollNumbers.stream()
+                .map(r -> "false")
+                .collect(Collectors.joining(","));
+        
         TeamRegistration teamRegistration = TeamRegistration.builder()
                 .event(event)
                 .teamName(teamName)
@@ -103,6 +108,7 @@ public class TeamRegistrationService {
                 .memberRollNumbers(rollNumbersStr)
                 .memberNames(namesStr)
                 .memberEmails(emailsStr)
+                .memberAttendanceStatuses(attendanceStatuses)
                 .registeredBy(user)
                 .status(TeamRegistration.RegistrationStatus.REGISTERED)
                 .registrationNotes(notes)
@@ -199,6 +205,39 @@ public class TeamRegistrationService {
                 team.getTeamName(), team.getEvent().getTitle());
     }
     
+    public TeamRegistrationDto updateMemberAttendance(Long teamId, int memberIndex, boolean attended) {
+        TeamRegistration team = teamRegistrationRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Team registration not found"));
+        
+        // Parse current attendance statuses
+        List<String> statuses = team.getMemberAttendanceStatuses() != null && !team.getMemberAttendanceStatuses().isEmpty()
+                ? new java.util.ArrayList<>(Arrays.asList(team.getMemberAttendanceStatuses().split(",")))
+                : new java.util.ArrayList<>();
+        
+        // Ensure the list has enough elements
+        int teamSize = Arrays.asList(team.getMemberRollNumbers().split(",")).size();
+        while (statuses.size() < teamSize) {
+            statuses.add("false");
+        }
+        
+        // Validate member index
+        if (memberIndex < 0 || memberIndex >= teamSize) {
+            throw new RuntimeException("Invalid member index");
+        }
+        
+        // Update attendance status for the specific member
+        statuses.set(memberIndex, String.valueOf(attended));
+        
+        // Save back to entity
+        team.setMemberAttendanceStatuses(String.join(",", statuses));
+        TeamRegistration saved = teamRegistrationRepository.save(team);
+        
+        log.info("Updated attendance for team '{}', member index {}: {}", 
+                team.getTeamName(), memberIndex, attended);
+        
+        return convertToDto(saved);
+    }
+    
     private TeamRegistrationDto convertToDto(TeamRegistration team) {
         List<String> rollNumbers = Arrays.asList(team.getMemberRollNumbers().split(","));
         List<String> names = (team.getMemberNames() != null && !team.getMemberNames().isEmpty()) 
@@ -207,6 +246,14 @@ public class TeamRegistrationService {
         List<String> emails = (team.getMemberEmails() != null && !team.getMemberEmails().isEmpty()) 
                 ? Arrays.asList(team.getMemberEmails().split(",")) 
                 : null;
+        
+        // Parse attendance statuses
+        List<Boolean> attendanceStatuses = null;
+        if (team.getMemberAttendanceStatuses() != null && !team.getMemberAttendanceStatuses().isEmpty()) {
+            attendanceStatuses = Arrays.stream(team.getMemberAttendanceStatuses().split(","))
+                    .map(Boolean::parseBoolean)
+                    .collect(Collectors.toList());
+        }
         
         return TeamRegistrationDto.builder()
                 .id(team.getId())
@@ -217,6 +264,7 @@ public class TeamRegistrationService {
                 .memberRollNumbers(rollNumbers)
                 .memberNames(names)
                 .memberEmails(emails)
+                .memberAttendanceStatuses(attendanceStatuses)
                 .registeredById(team.getRegisteredBy().getId())
                 .registeredByName(team.getRegisteredBy().getName())
                 .registeredByEmail(team.getRegisteredBy().getEmail())

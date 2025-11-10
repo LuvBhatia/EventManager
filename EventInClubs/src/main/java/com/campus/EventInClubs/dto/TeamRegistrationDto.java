@@ -18,6 +18,7 @@ public class TeamRegistrationDto {
     private List<String> memberRollNumbers;
     private List<String> memberNames;
     private List<String> memberEmails;
+    private List<Boolean> memberAttendanceStatuses; // Attendance status for each member
     private Long registeredById;
     private String registeredByName;
     private String registeredByEmail;

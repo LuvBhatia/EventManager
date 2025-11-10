@@ -37,6 +37,9 @@ public class TeamRegistration {
     @Column(name = "member_emails", columnDefinition = "TEXT")
     private String memberEmails; // Comma-separated member emails
     
+    @Column(name = "member_attendance_statuses", columnDefinition = "TEXT")
+    private String memberAttendanceStatuses; // Comma-separated attendance statuses (true/false for each member)
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registered_by", nullable = false)
     private User registeredBy;
