@@ -42,6 +42,7 @@ export default function ClubAdminDashboard() {
   const [registrationsEventId, setRegistrationsEventId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [proposalStatusFilter, setProposalStatusFilter] = useState('all');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   // Auto-refresh active events when on active-events tab
   useEffect(() => {
@@ -1644,44 +1645,64 @@ export default function ClubAdminDashboard() {
     );
   }
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setMobileSidebarOpen(false); // Close mobile sidebar on tab selection
+  };
+
   return (
     <div className="club-admin-dashboard">
-      <div className="dashboard-sidebar">
+      <button 
+        className="mobile-sidebar-toggle"
+        onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        aria-label="Toggle sidebar"
+      >
+        {mobileSidebarOpen ? '✕' : '☰'}
+      </button>
+
+      <div className={`dashboard-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <h2>Club Admin</h2>
+          <button 
+            className="sidebar-close"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Close sidebar"
+          >
+            ✕
+          </button>
         </div>
         <div className="sidebar-nav">
           <button 
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => handleTabChange('overview')}
           >
             <span className="nav-icon">📊</span>
             <span>Overview</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'clubs' ? 'active' : ''}`}
-            onClick={() => setActiveTab('clubs')}
+            onClick={() => handleTabChange('clubs')}
           >
             <span className="nav-icon">🏛️</span>
             <span>My Clubs</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'events' ? 'active' : ''}`}
-            onClick={() => setActiveTab('events')}
+            onClick={() => handleTabChange('events')}
           >
             <span className="nav-icon">🎯</span>
             <span>Topics for Ideas</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'proposals' ? 'active' : ''}`}
-            onClick={() => setActiveTab('proposals')}
+            onClick={() => handleTabChange('proposals')}
           >
             <span className="nav-icon">📝</span>
             <span>Event Proposals</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'active-events' ? 'active' : ''}`}
-            onClick={() => setActiveTab('active-events')}
+            onClick={() => handleTabChange('active-events')}
           >
             <span className="nav-icon">🎪</span>
             <span>Active Events</span>
@@ -1689,7 +1710,7 @@ export default function ClubAdminDashboard() {
           {/* Removed separate Rejected Events section; rejections will appear within Event Proposals */}
           <button 
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analytics')}
+            onClick={() => handleTabChange('analytics')}
           >
             <span className="nav-icon">📈</span>
             <span>Analytics</span>

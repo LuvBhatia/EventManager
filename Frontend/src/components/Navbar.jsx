@@ -6,11 +6,17 @@ import "./Navbar.css";
 
 export default function Navbar() {
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
   // Force component to re-render when needed
   const triggerUpdate = () => setForceUpdate(prev => prev + 1);
+  
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location]);
   
   // Get fresh auth data on every render
   const token = localStorage.getItem("token");
@@ -56,7 +62,15 @@ export default function Navbar() {
           </div>
         </div>
 
-        <nav className="navlinks">
+        <button 
+          className="mobile-menu-toggle" 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+
+        <nav className={`navlinks ${mobileMenuOpen ? 'open' : ''}`}>
           {!isAdmin && !isSuperAdmin && <Link to="/">Home</Link>}
           {token && !isAdmin && !isSuperAdmin && <Link to="/clubs">Clubs</Link>}
           {token && !isAdmin && !isSuperAdmin && <Link to="/club-topics" className="nav-link">Club Topics</Link>}

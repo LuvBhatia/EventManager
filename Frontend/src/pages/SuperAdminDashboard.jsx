@@ -19,6 +19,7 @@ export default function SuperAdminDashboard() {
   const [pendingSuperAdminRequests, setPendingSuperAdminRequests] = useState(0);
   const [pendingClubAdminRequests, setPendingClubAdminRequests] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchAllData();
@@ -248,31 +249,51 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setMobileSidebarOpen(false);
+  };
+
   return (
     <div className="super-admin-dashboard">
-      <div className="dashboard-sidebar">
+      <button 
+        className="mobile-sidebar-toggle"
+        onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        aria-label="Toggle sidebar"
+      >
+        {mobileSidebarOpen ? '✕' : '☰'}
+      </button>
+
+      <div className={`dashboard-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <h2>🔐 Super Admin</h2>
           <p>EventInClubs System</p>
+          <button 
+            className="sidebar-close"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Close sidebar"
+          >
+            ✕
+          </button>
         </div>
         <nav className="sidebar-nav">
           <button
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => handleTabChange('overview')}
           >
             <span className="nav-icon">📊</span>
             Overview
           </button>
           <button
             className={`nav-item ${activeTab === 'event-approvals' ? 'active' : ''}`}
-            onClick={() => setActiveTab('event-approvals')}
+            onClick={() => handleTabChange('event-approvals')}
           >
             <span className="nav-icon">📅</span>
             Event Approvals
           </button>
           <button
             className={`nav-item ${activeTab === 'super-admin-requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('super-admin-requests')}
+            onClick={() => handleTabChange('super-admin-requests')}
           >
             <span className="nav-icon">👑</span>
             Super Admin Requests
@@ -282,7 +303,7 @@ export default function SuperAdminDashboard() {
           </button>
           <button
             className={`nav-item ${activeTab === 'club-admin-requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('club-admin-requests')}
+            onClick={() => handleTabChange('club-admin-requests')}
           >
             <span className="nav-icon">🏢</span>
             Club Admin Requests
@@ -292,7 +313,7 @@ export default function SuperAdminDashboard() {
           </button>
           <button
             className={`nav-item ${activeTab === 'system' ? 'active' : ''}`}
-            onClick={() => setActiveTab('system')}
+            onClick={() => handleTabChange('system')}
           >
             <span className="nav-icon">⚙️</span>
             System Management
