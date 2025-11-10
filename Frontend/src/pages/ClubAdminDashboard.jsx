@@ -1524,6 +1524,13 @@ export default function ClubAdminDashboard() {
                   </div>
                 )}
                 
+                {event.hallName && (
+                  <div className="detail-row">
+                    <span className="detail-label">🏛️ Hall:</span>
+                    <span className="detail-value">{event.hallName}</span>
+                  </div>
+                )}
+                
                 {event.location && (
                   <div className="detail-row">
                     <span className="detail-label">📍 Location:</span>
