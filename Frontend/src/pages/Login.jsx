@@ -62,7 +62,7 @@ export default function Login() {
       const res = await loginUser(formData);
       console.log('Full login response:', JSON.stringify(res, null, 2));
       
-      const { token, email, role } = res.data || {};
+      const { token, email, role, name } = res.data || {};
       
       if (!token || !email) {
         throw new Error('Invalid login response: missing token or email');
@@ -92,7 +92,7 @@ export default function Login() {
       const userData = {
         id: userIdValue,
         email: email.toLowerCase().trim(),
-        name: email.split('@')[0],
+        name: name || email.split('@')[0], // Use actual name from backend
         role: role || 'USER'
       };
       
@@ -188,7 +188,7 @@ export default function Login() {
       userData = {
         id: response.userId || response.email,
         email: response.email,
-        name: response.name || response.email.split('@')[0],
+        name: response.name || 'Google User', // Use actual name from backend
         role: userRole
       };
       localStorage.setItem('user', JSON.stringify(userData));

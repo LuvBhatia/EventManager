@@ -56,7 +56,7 @@ const GoogleSignIn = ({ onSuccess, onError, loading, setLoading }) => {
         const userData = {
           id: tokenPayload.userId,
           email: tokenPayload.sub, // sub contains the email in our JWT
-          name: res.data.email?.split('@')[0] || tokenPayload.sub?.split('@')[0] || 'Google User',
+          name: res.data.name || 'Google User', // Use actual name from backend
           role: tokenPayload.role || res.data.role || 'STUDENT',
           token: token
         };

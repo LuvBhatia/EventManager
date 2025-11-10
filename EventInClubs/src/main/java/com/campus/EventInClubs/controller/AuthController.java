@@ -100,6 +100,7 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("email", user.getEmail());
+        response.put("name", user.getName());
         response.put("role", user.getRole().name());
         
         // Include clubId for club admins
@@ -147,6 +148,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of(
                     "token", token,
                     "email", user.getEmail(),
+                    "name", user.getName(),
                     "role", user.getRole().name()
             ));
         } catch (RestClientException ex) {
