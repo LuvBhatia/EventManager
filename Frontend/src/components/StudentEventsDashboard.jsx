@@ -67,7 +67,12 @@ const StudentEventsDashboard = () => {
     const now = new Date();
     const startDate = new Date(event.startDate);
     const endDate = new Date(event.endDate);
-    const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
+    
+    // If registrationDeadline is set, use it
+    // Otherwise, allow registration up to 3 hours after event starts
+    const registrationDeadline = event.registrationDeadline 
+      ? new Date(event.registrationDeadline) 
+      : new Date(startDate.getTime() + (3 * 60 * 60 * 1000)); // startDate + 3 hours
 
     if (endDate < now) return 'completed';
     if (startDate <= now && endDate >= now) return 'ongoing';

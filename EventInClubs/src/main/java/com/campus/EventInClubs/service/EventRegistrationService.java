@@ -39,6 +39,22 @@ public class EventRegistrationService {
             throw new RuntimeException("Event is not open for registration");
         }
         
+        // Check registration deadline (allow registration up to 3 hours after event starts)
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime effectiveDeadline;
+        
+        if (event.getRegistrationDeadline() != null) {
+            // Use explicit registration deadline if set
+            effectiveDeadline = event.getRegistrationDeadline();
+        } else {
+            // Allow registration up to 3 hours after event start time
+            effectiveDeadline = event.getStartDate().plusHours(3);
+        }
+        
+        if (now.isAfter(effectiveDeadline)) {
+            throw new RuntimeException("Registration deadline has passed");
+        }
+        
         // Check if user exists
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));

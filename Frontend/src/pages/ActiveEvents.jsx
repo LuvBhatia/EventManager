@@ -269,7 +269,12 @@ const ActiveEvents = () => {
   const isRegistrationOpen = (event) => {
     const now = new Date();
     const startDate = new Date(event.startDate);
-    const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : startDate;
+    
+    // If registrationDeadline is set, use it
+    // Otherwise, allow registration up to 3 hours after event starts
+    const registrationDeadline = event.registrationDeadline 
+      ? new Date(event.registrationDeadline) 
+      : new Date(startDate.getTime() + (3 * 60 * 60 * 1000)); // startDate + 3 hours
     
     return now < registrationDeadline && 
            (event.maxParticipants === null || event.currentParticipants < event.maxParticipants);
